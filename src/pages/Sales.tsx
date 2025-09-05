@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Plus,
@@ -26,87 +19,25 @@ import {
   Wrench,
   Calculator,
 } from "lucide-react";
-
-// Types
-interface Client {
-  id: string;
-  name: string;
-  nuit?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock_qty: number;
-  unit: string;
-}
-
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-}
+import { useData } from "@/contexts/DataContext";
 
 export default function Sales() {
   const { toast } = useToast();
-  const [documentType, setDocumentType] = useState<"invoice" | "quote">("invoice");
+  const { clients, products, services, addClient, addInvoice, addQuotation } = useData();
+  
+  const [documentType, setDocumentType] = useState<"invoice" | "quotation">("invoice");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [items, setItems] = useState<any[]>([]);
-  const [discountEnabled, setDiscountEnabled] = useState(false);
   const [vatEnabled, setVatEnabled] = useState(true);
-  
-  // Data states
-  const [clients, setClients] = useState<Client[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // New client form
   const [newClient, setNewClient] = useState({
     name: "",
-    nuit: "",
+    address: "",
     phone: "",
-    email: "",
-    address: ""
+    email: ""
   });
-
-  // Load data
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [clientsRes, productsRes, servicesRes] = await Promise.all([
-        supabase.from("clients").select("*"),
-        supabase.from("products").select("*"),
-        supabase.from("services").select("*")
-      ]);
-
-      if (clientsRes.error) throw clientsRes.error;
-      if (productsRes.error) throw productsRes.error;
-      if (servicesRes.error) throw servicesRes.error;
-
-      setClients(clientsRes.data || []);
-      setProducts(productsRes.data || []);
-      setServices(servicesRes.data || []);
-    } catch (error) {
-      console.error("Error loading data:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const saveNewClient = async () => {
     if (!newClient.name.trim()) {
@@ -119,17 +50,11 @@ export default function Sales() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("clients")
-        .insert([newClient])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setClients([...clients, data]);
-      setSelectedClient(data.id);
-      setNewClient({ name: "", nuit: "", phone: "", email: "", address: "" });
+      addClient(newClient);
+      
+      const clientId = Math.random().toString(36).substring(7);
+      setSelectedClient(clientId);
+      setNewClient({ name: "", address: "", phone: "", email: "" });
       setShowNewClientForm(false);
       
       toast({
@@ -137,7 +62,6 @@ export default function Sales() {
         description: "Cliente criado com sucesso",
       });
     } catch (error) {
-      console.error("Error saving client:", error);
       toast({
         title: "Erro",
         description: "Erro ao salvar cliente",
@@ -156,14 +80,12 @@ export default function Sales() {
     .reduce((sum, item) => sum + item.price, 0);
   
   const subtotal = subtotalProducts + subtotalServices;
-  const discountAmount = discountEnabled ? subtotal * 0.1 : 0;
-  const baseAfterDiscount = subtotal - discountAmount;
-  const vatAmount = vatEnabled ? baseAfterDiscount * 0.16 : 0;
-  const total = baseAfterDiscount + vatAmount;
+  const vatAmount = vatEnabled ? subtotal * 0.17 : 0;
+  const total = subtotal + vatAmount;
 
-  const addProductItem = (product: Product, quantity: number) => {
+  const addProductItem = (product: any, quantity: number) => {
     if (quantity <= 0) return;
-    if (documentType === "invoice" && quantity > product.stock_qty) {
+    if (documentType === "invoice" && quantity > product.stock) {
       toast({
         title: "Erro",
         description: "Quantidade excede o stock disponível!",
@@ -179,24 +101,97 @@ export default function Sales() {
       name: product.name,
       price: product.price,
       quantity,
-      unit: product.unit,
+      unitPrice: product.price,
       total: product.price * quantity,
     }]);
   };
 
-  const addServiceItem = (service: Service) => {
+  const addServiceItem = (service: any) => {
     setItems([...items, {
       id: Date.now(),
       type: "service",
       itemId: service.id,
       name: service.name,
       price: service.price,
+      quantity: 1,
+      unitPrice: service.price,
       total: service.price,
     }]);
   };
 
   const removeItem = (id: number) => {
     setItems(items.filter(item => item.id !== id));
+  };
+
+  const handleSaveDocument = () => {
+    if (!selectedClient || items.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione um cliente e adicione pelo menos um item",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedClientData = clients.find(c => c.id === selectedClient);
+    if (!selectedClientData) return;
+
+    const documentData = {
+      clientId: selectedClient,
+      clientName: selectedClientData.name,
+      date: new Date().toISOString().split('T')[0],
+      items: items.map(item => ({
+        id: item.id.toString(),
+        type: item.type,
+        itemId: item.itemId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        total: item.total
+      })),
+      subtotal,
+      taxAmount: vatAmount,
+      total,
+      status: "Pendente" as const
+    };
+
+    try {
+      if (documentType === "invoice") {
+        addInvoice({
+          ...documentData,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          type: "invoice"
+        });
+        
+        toast({
+          title: "Fatura criada!",
+          description: "A fatura foi criada com sucesso."
+        });
+      } else {
+        addQuotation({
+          ...documentData,
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          type: "quotation"
+        });
+        
+        toast({
+          title: "Cotação criada!",
+          description: "A cotação foi criada com sucesso."
+        });
+      }
+
+      // Reset form
+      setSelectedClient(null);
+      setItems([]);
+      setShowNewClientForm(false);
+
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar documento",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -227,7 +222,7 @@ export default function Sales() {
                       <ShoppingCart className="h-4 w-4" />
                       <span>Faturação</span>
                     </TabsTrigger>
-                    <TabsTrigger value="quote" className="flex items-center space-x-2">
+                    <TabsTrigger value="quotation" className="flex items-center space-x-2">
                       <FileText className="h-4 w-4" />
                       <span>Cotação</span>
                     </TabsTrigger>
@@ -254,7 +249,7 @@ export default function Sales() {
                       <SelectContent>
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
-                            {client.name} {client.nuit && `- NUIT ${client.nuit}`}
+                            {client.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -270,46 +265,33 @@ export default function Sales() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="clientName">Nome do Cliente</Label>
-                        <Input 
-                          id="clientName" 
-                          placeholder="Nome da empresa"
-                          value={newClient.name}
-                          onChange={(e) => setNewClient({...newClient, name: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="clientNuit">NUIT</Label>
-                        <Input 
-                          id="clientNuit" 
-                          placeholder="400123456"
-                          value={newClient.nuit}
-                          onChange={(e) => setNewClient({...newClient, nuit: e.target.value})}
-                        />
-                      </div>
+                    <div>
+                      <Label htmlFor="clientName">Nome</Label>
+                      <Input 
+                        id="clientName" 
+                        placeholder="Nome do cliente"
+                        value={newClient.name}
+                        onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                      />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="clientPhone">Telefone</Label>
-                        <Input 
-                          id="clientPhone" 
-                          placeholder="+258 84 123 4567"
-                          value={newClient.phone}
-                          onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="clientEmail">Email</Label>
-                        <Input 
-                          id="clientEmail" 
-                          type="email" 
-                          placeholder="cliente@empresa.co.mz"
-                          value={newClient.email}
-                          onChange={(e) => setNewClient({...newClient, email: e.target.value})}
-                        />
-                      </div>
+                    <div>
+                      <Label htmlFor="clientEmail">Email</Label>
+                      <Input 
+                        id="clientEmail" 
+                        type="email" 
+                        placeholder="cliente@empresa.co.mz"
+                        value={newClient.email}
+                        onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="clientPhone">Telefone</Label>
+                      <Input 
+                        id="clientPhone" 
+                        placeholder="+258 84 123 4567"
+                        value={newClient.phone}
+                        onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                      />
                     </div>
                     <div>
                       <Label htmlFor="clientAddress">Endereço</Label>
@@ -340,7 +322,7 @@ export default function Sales() {
                       return client ? (
                         <div>
                           <h4 className="font-medium">{client.name}</h4>
-                          {client.nuit && <p className="text-sm text-muted-foreground">NUIT: {client.nuit}</p>}
+                          <p className="text-sm text-muted-foreground">{client.email}</p>
                         </div>
                       ) : null;
                     })()}
@@ -374,7 +356,7 @@ export default function Sales() {
                           <div className="flex-1">
                             <h4 className="font-medium">{product.name}</h4>
                             <p className="text-sm text-muted-foreground">
-                              {product.price.toFixed(2)} MTN | Stock: {product.stock_qty} {product.unit}
+                              {product.price.toFixed(2)} MTN | Stock: {product.stock}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -382,7 +364,7 @@ export default function Sales() {
                               type="number"
                               placeholder="Qtd"
                               className="w-20"
-                              step={product.unit === "metros" ? "0.1" : "1"}
+                              min="1"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   const quantity = Number((e.target as HTMLInputElement).value);
@@ -391,7 +373,6 @@ export default function Sales() {
                                 }
                               }}
                             />
-                            <span className="text-sm text-muted-foreground">{product.unit}</span>
                           </div>
                         </div>
                       ))}
@@ -436,7 +417,7 @@ export default function Sales() {
                           <h4 className="font-medium">{item.name}</h4>
                           <p className="text-sm text-muted-foreground">
                             {item.price.toFixed(2)} MTN
-                            {item.type === "product" && ` x ${item.quantity} ${item.unit}`}
+                            {item.type === "product" && ` x ${item.quantity}`}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -476,60 +457,43 @@ export default function Sales() {
                     <span>Serviços:</span>
                     <span>{subtotalServices.toFixed(2)} MTN</span>
                   </div>
-                  <div className="flex justify-between font-medium">
+                  <hr />
+                  <div className="flex justify-between">
                     <span>Subtotal:</span>
                     <span>{subtotal.toFixed(2)} MTN</span>
                   </div>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t">
+                  
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Desconto 10%</span>
-                    <Switch 
-                      checked={discountEnabled}
-                      onCheckedChange={setDiscountEnabled}
-                    />
-                  </div>
-                  {discountEnabled && (
-                    <div className="flex justify-between text-sm text-destructive">
-                      <span>Desconto:</span>
-                      <span>-{discountAmount.toFixed(2)} MTN</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">IVA 16%</span>
-                    <Switch 
+                    <Label htmlFor="vat-toggle">IVA (17%)</Label>
+                    <Switch
+                      id="vat-toggle"
                       checked={vatEnabled}
                       onCheckedChange={setVatEnabled}
                     />
                   </div>
+                  
                   {vatEnabled && (
                     <div className="flex justify-between text-sm">
                       <span>IVA:</span>
                       <span>{vatAmount.toFixed(2)} MTN</span>
                     </div>
                   )}
-                </div>
-
-                <div className="pt-4 border-t">
+                  
+                  <hr className="border-t-2" />
                   <div className="flex justify-between text-lg font-bold">
                     <span>Total:</span>
                     <span>{total.toFixed(2)} MTN</span>
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-4">
-                  <Button 
-                    className="w-full" 
-                    disabled={!selectedClient || items.length === 0}
-                  >
-                    {documentType === "invoice" ? "Emitir Fatura" : "Criar Cotação"}
-                  </Button>
-                  <Button variant="outline" className="w-full">
-                    Guardar Rascunho
-                  </Button>
-                </div>
+                <Button 
+                  onClick={handleSaveDocument}
+                  className="w-full" 
+                  size="lg"
+                  disabled={!selectedClient || items.length === 0}
+                >
+                  {documentType === "invoice" ? "Criar Fatura" : "Criar Cotação"}
+                </Button>
               </CardContent>
             </Card>
           </div>

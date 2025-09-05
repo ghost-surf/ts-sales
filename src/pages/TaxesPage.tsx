@@ -3,50 +3,46 @@ import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Wrench } from "lucide-react";
+import { Plus, Edit, Trash2, Calculator } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 
-export default function Services() {
-  const { services, addService, updateService, deleteService } = useData();
+export default function TaxesPage() {
+  const { taxes, addTax, updateTax, deleteTax } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingService, setEditingService] = useState<any>(null);
+  const [editingTax, setEditingTax] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
-    price: "",
-    description: ""
+    percentage: ""
   });
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingService) {
-        updateService(editingService.id, {
+      if (editingTax) {
+        updateTax(editingTax.id, {
           name: formData.name,
-          price: parseFloat(formData.price),
-          description: formData.description
+          percentage: parseFloat(formData.percentage)
         });
         
         toast({
-          title: "Serviço atualizado!",
-          description: "O serviço foi atualizado com sucesso."
+          title: "Imposto atualizado!",
+          description: "O imposto foi atualizado com sucesso."
         });
       } else {
-        addService({
+        addTax({
           name: formData.name,
-          price: parseFloat(formData.price),
-          description: formData.description
+          percentage: parseFloat(formData.percentage)
         });
         
         toast({
-          title: "Serviço criado!",
-          description: "O novo serviço foi criado com sucesso."
+          title: "Imposto criado!",
+          description: "O novo imposto foi criado com sucesso."
         });
       }
 
@@ -61,27 +57,26 @@ export default function Services() {
     }
   };
 
-  const handleEdit = (service: any) => {
-    setEditingService(service);
+  const handleEdit = (tax: any) => {
+    setEditingTax(tax);
     setFormData({
-      name: service.name,
-      price: service.price.toString(),
-      description: service.description || ""
+      name: tax.name,
+      percentage: tax.percentage.toString()
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      deleteService(id);
+      deleteTax(id);
       
       toast({
-        title: "Serviço eliminado!",
-        description: "O serviço foi eliminado com sucesso."
+        title: "Imposto eliminado!",
+        description: "O imposto foi eliminado com sucesso."
       });
     } catch (error: any) {
       toast({
-        title: "Erro ao eliminar serviço",
+        title: "Erro ao eliminar imposto",
         description: error.message,
         variant: "destructive"
       });
@@ -89,8 +84,8 @@ export default function Services() {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", price: "", description: "" });
-    setEditingService(null);
+    setFormData({ name: "", percentage: "" });
+    setEditingTax(null);
   };
 
   const handleDialogClose = () => {
@@ -103,9 +98,9 @@ export default function Services() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Serviços</h1>
+            <h1 className="text-3xl font-bold text-foreground">Impostos</h1>
             <p className="text-muted-foreground">
-              Gerir serviços e mão-de-obra
+              Gestão de impostos aplicáveis às vendas
             </p>
           </div>
           
@@ -113,51 +108,43 @@ export default function Services() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Novo Serviço
+                Novo Imposto
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingService ? 'Editar Serviço' : 'Novo Serviço'}
+                  {editingTax ? 'Editar Imposto' : 'Novo Imposto'}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="name">Descrição do Serviço</Label>
+                  <Label htmlFor="name">Nome do Imposto</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Ex: Instalação de Bomba"
+                    placeholder="Ex: IVA"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="price">Preço Unitário (MTN)</Label>
+                  <Label htmlFor="percentage">Percentual (%)</Label>
                   <Input
-                    id="price"
+                    id="percentage"
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    placeholder="0.00"
+                    max="100"
+                    value={formData.percentage}
+                    onChange={(e) => setFormData({...formData, percentage: e.target.value})}
+                    placeholder="17"
                     required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Descrição Detalhada</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Descrição detalhada do serviço"
                   />
                 </div>
                 <div className="flex space-x-2">
                   <Button type="submit">
-                    {editingService ? 'Atualizar' : 'Criar'}
+                    {editingTax ? 'Atualizar' : 'Criar'}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancelar
@@ -171,59 +158,48 @@ export default function Services() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Wrench className="h-5 w-5" />
-              <span>Lista de Serviços</span>
+              <Calculator className="h-5 w-5" />
+              <span>Lista de Impostos</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {services.length === 0 ? (
+            {taxes.length === 0 ? (
               <div className="text-center py-8">
-                <Wrench className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Nenhum serviço encontrado</p>
+                <Calculator className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Nenhum imposto encontrado</p>
                 <p className="text-sm text-muted-foreground">
-                  Clique em "Novo Serviço" para adicionar o primeiro serviço
+                  Clique em "Novo Imposto" para adicionar o primeiro imposto
                 </p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Serviço</TableHead>
-                    <TableHead>Preço</TableHead>
-                    <TableHead>Data de Criação</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Percentual</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {services.map((service) => (
-                    <TableRow key={service.id}>
+                  {taxes.map((tax) => (
+                    <TableRow key={tax.id}>
+                      <TableCell className="font-medium">{tax.name}</TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{service.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {service.description}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-mono">
-                        {service.price.toFixed(2)} MTN
-                      </TableCell>
-                      <TableCell>
-                        {new Date(service.createdAt).toLocaleDateString()}
+                        <Badge variant="outline">{tax.percentage}%</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEdit(service)}
+                            onClick={() => handleEdit(tax)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(service.id)}
+                            onClick={() => handleDelete(tax.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -1,153 +1,105 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, Users, Shield, User, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-interface Profile {
-  id: string;
-  name: string;
-  user_id: string;
-  role: 'admin' | 'operador';
-  created_at: string;
-  updated_at: string;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Edit, Trash2, Users, Shield, User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useData } from "@/contexts/DataContext";
 
 export default function UsersPage() {
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { users, addUser, updateUser, deleteUser } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const { toast } = useToast();
   
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    role: "operador" as 'admin' | 'operador',
+    role: "operador" as "admin" | "operador",
   });
-
-  useEffect(() => {
-    fetchProfiles();
-  }, []);
-
-  const fetchProfiles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setProfiles(data || []);
-    } catch (error) {
-      console.error('Error fetching profiles:', error);
-      toast.error('Erro ao carregar utilizadores');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || (!editingProfile && (!formData.email || !formData.password))) return;
-
-    setSaving(true);
     try {
-      if (editingProfile) {
-        // Update existing profile
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: formData.name,
-            role: formData.role,
-          })
-          .eq('id', editingProfile.id);
-
-        if (error) throw error;
-        toast.success('Utilizador atualizado com sucesso!');
+      if (editingUser) {
+        updateUser(editingUser.id, {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+        });
+        
+        toast({
+          title: "Utilizador atualizado!",
+          description: "O utilizador foi atualizado com sucesso."
+        });
       } else {
-        // Create new user via Supabase Auth (this would need admin privileges)
-        // For now, we'll show a message that this requires admin setup
-        toast.error('Criação de novos utilizadores deve ser feita através do painel de administração do Supabase');
-        return;
+        addUser({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+        });
+        
+        toast({
+          title: "Utilizador criado!",
+          description: "O novo utilizador foi criado com sucesso."
+        });
       }
 
-      setDialogOpen(false);
       resetForm();
-      fetchProfiles();
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error('Erro ao guardar utilizador');
-    } finally {
-      setSaving(false);
+      setDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
-  const handleEdit = (profile: Profile) => {
-    setEditingProfile(profile);
+  const handleEdit = (user: any) => {
+    setEditingUser(user);
     setFormData({
-      name: profile.name,
-      email: "",
+      name: user.name,
+      email: user.email,
       password: "",
-      role: profile.role,
+      role: user.role,
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja eliminar este utilizador?')) return;
-
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Utilizador eliminado com sucesso!');
-      fetchProfiles();
-    } catch (error) {
-      console.error('Error deleting profile:', error);
-      toast.error('Erro ao eliminar utilizador');
+      deleteUser(id);
+      
+      toast({
+        title: "Utilizador eliminado!",
+        description: "O utilizador foi eliminado com sucesso."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao eliminar utilizador",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
   const resetForm = () => {
     setFormData({ name: "", email: "", password: "", role: "operador" });
-    setEditingProfile(null);
+    setEditingUser(null);
   };
 
   const handleDialogClose = () => {
     setDialogOpen(false);
     resetForm();
   };
-
-  const getRoleBadgeVariant = (role: string) => {
-    return role === 'admin' ? 'default' : 'secondary';
-  };
-
-  const getRoleIcon = (role: string) => {
-    return role === 'admin' ? Shield : User;
-  };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -170,7 +122,7 @@ export default function UsersPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingProfile ? 'Editar Utilizador' : 'Novo Utilizador'}
+                  {editingUser ? 'Editar Utilizador' : 'Novo Utilizador'}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -180,61 +132,52 @@ export default function UsersPage() {
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Nome do utilizador"
+                    placeholder="Nome completo do utilizador"
                     required
                   />
                 </div>
-                {!editingProfile && (
-                  <>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        placeholder="email@exemplo.com"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Palavra-passe</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({...formData, password: e.target.value})}
-                        placeholder="••••••••"
-                        required
-                      />
-                    </div>
-                  </>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="email@exemplo.com"
+                    required
+                  />
+                </div>
+                {!editingUser && (
+                  <div>
+                    <Label htmlFor="password">Senha</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
                 )}
                 <div>
-                  <Label htmlFor="role">Função</Label>
+                  <Label htmlFor="role">Tipo de Utilizador</Label>
                   <Select 
                     value={formData.role} 
-                    onValueChange={(value: 'admin' | 'operador') => setFormData({...formData, role: value})}
+                    onValueChange={(value: "admin" | "operador") => setFormData({...formData, role: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecionar função" />
+                      <SelectValue placeholder="Selecionar tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="admin">Administrador</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="operador">Operador</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex space-x-2">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      editingProfile ? 'Atualizar' : 'Criar'
-                    )}
+                  <Button type="submit">
+                    {editingUser ? 'Atualizar' : 'Criar'}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancelar
@@ -253,7 +196,7 @@ export default function UsersPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {profiles.length === 0 ? (
+            {users.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">Nenhum utilizador encontrado</p>
@@ -263,45 +206,47 @@ export default function UsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead>Data de Criação</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {profiles.map((profile) => (
-                    <TableRow key={profile.id}>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center space-x-2">
-                          {profile.role === 'admin' ? (
+                          {user.role === 'admin' ? (
                             <Shield className="h-4 w-4 text-primary" />
                           ) : (
                             <User className="h-4 w-4 text-muted-foreground" />
                           )}
-                          <span>{profile.name}</span>
+                          <span>{user.name}</span>
                         </div>
                       </TableCell>
+                      <TableCell>{user.email}</TableCell>
                       <TableCell>
-                        <Badge variant={profile.role === 'admin' ? 'default' : 'secondary'}>
-                          {profile.role === 'admin' ? 'Administrador' : 'Operador'}
+                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                          {user.role === 'admin' ? 'Administrador' : 'Operador'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(profile.created_at).toLocaleDateString('pt-PT')}
+                        {new Date(user.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEdit(profile)}
+                            onClick={() => handleEdit(user)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDelete(profile.id)}
+                            onClick={() => handleDelete(user.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

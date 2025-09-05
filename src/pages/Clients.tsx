@@ -1,155 +1,105 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Plus, Search, Users, DollarSign, TrendingUp, Edit, Trash2, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-interface Client {
-  id: string;
-  name: string;
-  nuit?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Users, Edit, Trash2 } from "lucide-react";
+import { useData } from "@/contexts/DataContext";
 
 export default function Clients() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { clients, addClient, updateClient, deleteClient } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     name: "",
-    nuit: "",
-    email: "",
-    phone: "",
     address: "",
+    phone: "",
+    email: "",
   });
-
-  useEffect(() => {
-    fetchClients();
-  }, []);
-
-  const fetchClients = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setClients(data || []);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-      toast.error('Erro ao carregar clientes');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) return;
-
-    setSaving(true);
     try {
       if (editingClient) {
-        const { error } = await supabase
-          .from('clients')
-          .update({
-            name: formData.name,
-            nuit: formData.nuit || null,
-            email: formData.email || null,
-            phone: formData.phone || null,
-            address: formData.address || null,
-          })
-          .eq('id', editingClient.id);
-
-        if (error) throw error;
-        toast.success('Cliente atualizado com sucesso!');
+        updateClient(editingClient.id, {
+          name: formData.name,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.email
+        });
+        
+        toast({
+          title: "Cliente atualizado!",
+          description: "O cliente foi atualizado com sucesso."
+        });
       } else {
-        const { error } = await supabase
-          .from('clients')
-          .insert([{
-            name: formData.name,
-            nuit: formData.nuit || null,
-            email: formData.email || null,
-            phone: formData.phone || null,
-            address: formData.address || null,
-          }]);
-
-        if (error) throw error;
-        toast.success('Cliente criado com sucesso!');
+        addClient({
+          name: formData.name,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.email
+        });
+        
+        toast({
+          title: "Cliente criado!",
+          description: "O novo cliente foi criado com sucesso."
+        });
       }
 
-      setDialogOpen(false);
       resetForm();
-      fetchClients();
-    } catch (error) {
-      console.error('Error saving client:', error);
-      toast.error('Erro ao guardar cliente');
-    } finally {
-      setSaving(false);
+      setDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
-  const handleEdit = (client: Client) => {
+  const handleEdit = (client: any) => {
     setEditingClient(client);
     setFormData({
       name: client.name,
-      nuit: client.nuit || "",
-      email: client.email || "",
-      phone: client.phone || "",
-      address: client.address || "",
+      address: client.address,
+      phone: client.phone,
+      email: client.email,
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja eliminar este cliente?')) return;
-
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      toast.success('Cliente eliminado com sucesso!');
-      fetchClients();
-    } catch (error) {
-      console.error('Error deleting client:', error);
-      toast.error('Erro ao eliminar cliente');
+      deleteClient(id);
+      
+      toast({
+        title: "Cliente eliminado!",
+        description: "O cliente foi eliminado com sucesso."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao eliminar cliente",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
   const resetForm = () => {
     setFormData({
       name: "",
-      nuit: "",
-      email: "",
-      phone: "",
       address: "",
+      phone: "",
+      email: "",
     });
     setEditingClient(null);
   };
@@ -161,19 +111,9 @@ export default function Clients() {
 
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (client.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (client.nuit || "").includes(searchTerm)
+    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.phone.includes(searchTerm)
   );
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -200,47 +140,36 @@ export default function Clients() {
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Nome do Cliente</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder="Ex: Construções Silva Lda"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="nuit">NUIT</Label>
-                    <Input
-                      id="nuit"
-                      value={formData.nuit}
-                      onChange={(e) => setFormData({...formData, nuit: e.target.value})}
-                      placeholder="Ex: 400123456"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="name">Nome</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder="Ex: Construções Silva Lda"
+                    required
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      placeholder="cliente@exemplo.com"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      placeholder="+258 84 123 4567"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    placeholder="cliente@exemplo.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Telefone</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="+258 84 123 4567"
+                    required
+                  />
                 </div>
                 <div>
                   <Label htmlFor="address">Endereço</Label>
@@ -249,18 +178,12 @@ export default function Clients() {
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
                     placeholder="Endereço completo do cliente"
+                    required
                   />
                 </div>
                 <div className="flex space-x-2">
-                  <Button type="submit" disabled={saving}>
-                    {saving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      editingClient ? 'Atualizar' : 'Criar'
-                    )}
+                  <Button type="submit">
+                    {editingClient ? 'Atualizar' : 'Criar'}
                   </Button>
                   <Button type="button" variant="outline" onClick={handleDialogClose}>
                     Cancelar
@@ -298,12 +221,10 @@ export default function Clients() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-success" />
+                <Users className="h-5 w-5 text-info" />
                 <div>
-                  <p className="text-2xl font-bold">
-                    {clients.length > 0 ? (clients.length / Math.max(1, clients.length) * 100).toFixed(0) : 0}%
-                  </p>
-                  <p className="text-sm text-muted-foreground">Taxa de Retenção</p>
+                  <p className="text-2xl font-bold">0</p>
+                  <p className="text-sm text-muted-foreground">Novos este Mês</p>
                 </div>
               </div>
             </CardContent>
@@ -319,7 +240,7 @@ export default function Clients() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Pesquisar por nome, email ou NUIT..."
+                placeholder="Pesquisar por nome, email ou telefone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -344,7 +265,6 @@ export default function Clients() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>NUIT</TableHead>
                     <TableHead>Contato</TableHead>
                     <TableHead>Data de Cadastro</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -356,35 +276,17 @@ export default function Clients() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{client.name}</p>
-                          {client.address && (
-                            <p className="text-sm text-muted-foreground line-clamp-1">
-                              {client.address}
-                            </p>
-                          )}
+                          <p className="text-sm text-muted-foreground">{client.address}</p>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {client.nuit ? (
-                          <Badge variant="outline">{client.nuit}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">N/A</span>
-                        )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          {client.email && (
-                            <p className="text-sm">{client.email}</p>
-                          )}
-                          {client.phone && (
-                            <p className="text-sm text-muted-foreground">{client.phone}</p>
-                          )}
-                          {!client.email && !client.phone && (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
+                          <p className="text-sm">{client.email}</p>
+                          <p className="text-sm text-muted-foreground">{client.phone}</p>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(client.created_at).toLocaleDateString('pt-PT')}
+                        {new Date(client.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,12 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LogIn, UserPlus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { User, Session } from '@supabase/supabase-js';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -30,33 +26,6 @@ export default function Auth() {
     confirmPassword: "",
   });
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Redirect authenticated users to dashboard
-        if (session?.user) {
-          navigate("/");
-        }
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        navigate("/");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -64,19 +33,14 @@ export default function Auth() {
     setSuccess(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginData.email,
-        password: loginData.password,
-      });
-
-      if (error) {
-        if (error.message === "Invalid login credentials") {
-          setError("Email ou palavra-passe incorretos");
-        } else {
-          setError(error.message);
-        }
-      } else {
+      // Simulate authentication - in a real app you would validate credentials
+      if (loginData.email === "admin@hydrostock.com" && loginData.password === "admin123") {
         setSuccess("Login realizado com sucesso!");
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
+      } else {
+        setError("Email ou palavra-passe incorretos");
       }
     } catch (err) {
       setError("Erro inesperado. Tente novamente.");
@@ -104,28 +68,18 @@ export default function Auth() {
     }
 
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      setSuccess("Conta criada com sucesso! Pode fazer login agora.");
       
-      const { error } = await supabase.auth.signUp({
-        email: signupData.email,
-        password: signupData.password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            name: signupData.name,
-          }
-        }
-      });
-
-      if (error) {
-        if (error.message === "User already registered") {
-          setError("Este email já está registado");
-        } else {
-          setError(error.message);
-        }
-      } else {
-        setSuccess("Conta criada com sucesso! Verifique o seu email para confirmar a conta.");
-      }
+      // Switch to login tab
+      setTimeout(() => {
+        setSignupData({
+          name: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+        });
+        setSuccess(null);
+      }, 2000);
     } catch (err) {
       setError("Erro inesperado. Tente novamente.");
     } finally {
@@ -177,7 +131,7 @@ export default function Auth() {
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="seu@email.com"
+                      placeholder="admin@hydrostock.com"
                       value={loginData.email}
                       onChange={(e) => setLoginData({...loginData, email: e.target.value})}
                       required
@@ -188,7 +142,7 @@ export default function Auth() {
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="admin123"
                       value={loginData.password}
                       onChange={(e) => setLoginData({...loginData, password: e.target.value})}
                       required
@@ -207,6 +161,9 @@ export default function Auth() {
                       </>
                     )}
                   </Button>
+                  <div className="text-xs text-muted-foreground text-center">
+                    Credenciais de teste: admin@hydrostock.com / admin123
+                  </div>
                 </form>
               </TabsContent>
 
