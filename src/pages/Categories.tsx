@@ -3,14 +3,17 @@ import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Categories() {
   const { categories, addCategory, updateCategory, deleteCategory } = useData();
@@ -18,7 +21,7 @@ export default function Categories() {
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
-    description: ""
+    unit: "pcs" as "metros" | "pcs",
   });
   const { toast } = useToast();
 
@@ -26,21 +29,21 @@ export default function Categories() {
     e.preventDefault();
     try {
       if (editingCategory) {
-        updateCategory(editingCategory.id, {
+        await updateCategory(editingCategory.id, {
           name: formData.name,
-          description: formData.description
+          unit: formData.unit,
         });
-        
+
         toast({
           title: "Categoria atualizada!",
           description: "A categoria foi atualizada com sucesso."
         });
       } else {
-        addCategory({
+        await addCategory({
           name: formData.name,
-          description: formData.description
+          unit: formData.unit,
         });
-        
+
         toast({
           title: "Categoria criada!",
           description: "A nova categoria foi criada com sucesso."
@@ -49,10 +52,10 @@ export default function Categories() {
 
       resetForm();
       setDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -62,30 +65,30 @@ export default function Categories() {
     setEditingCategory(category);
     setFormData({
       name: category.name,
-      description: category.description || ""
+      unit: category.unit ?? "pcs",
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      deleteCategory(id);
-      
+      await deleteCategory(id);
+
       toast({
         title: "Categoria eliminada!",
         description: "A categoria foi eliminada com sucesso."
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao eliminar categoria",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
   };
 
   const resetForm = () => {
-    setFormData({ name: "", description: "" });
+    setFormData({ name: "", unit: "pcs" });
     setEditingCategory(null);
   };
 
@@ -93,6 +96,8 @@ export default function Categories() {
     setDialogOpen(false);
     resetForm();
   };
+
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(categories);
 
   return (
     <Layout>
@@ -105,7 +110,7 @@ export default function Categories() {
             </p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -130,13 +135,19 @@ export default function Categories() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Descrição da categoria"
-                  />
+                  <Label htmlFor="unit">Unidade de Medida</Label>
+                  <Select
+                    value={formData.unit}
+                    onValueChange={(value: "metros" | "pcs") => setFormData({...formData, unit: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pcs">Peças (pcs)</SelectItem>
+                      <SelectItem value="metros">Metros</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex space-x-2">
                   <Button type="submit">
@@ -155,12 +166,12 @@ export default function Categories() {
           <CardHeader>
             <CardTitle>Lista de Categorias</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
+                  <TableHead>Unidade</TableHead>
                   <TableHead>Data de Criação</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -173,13 +184,13 @@ export default function Categories() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  categories.map((category) => (
+                  pageItems.map((category) => (
                     <TableRow key={category.id}>
                       <TableCell className="font-medium">
                         {category.name}
                       </TableCell>
                       <TableCell>
-                        {category.description || "Sem descrição"}
+                        <Badge variant="secondary">{category.unit === "metros" ? "Metros" : "Peças (pcs)"}</Badge>
                       </TableCell>
                       <TableCell>
                         {new Date(category.createdAt).toLocaleDateString()}
@@ -207,6 +218,14 @@ export default function Categories() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </CardContent>
         </Card>
       </div>

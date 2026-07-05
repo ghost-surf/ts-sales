@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Package, AlertTriangle, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Products() {
   const { products, categories, addProduct, updateProduct, deleteProduct } = useData();
@@ -26,6 +29,8 @@ export default function Products() {
     categoryId: "",
     price: "",
     stock: "",
+    lowStockThreshold: "10",
+    unit: "pcs" as "metros" | "pcs",
     description: "",
   });
 
@@ -35,29 +40,31 @@ export default function Products() {
 
     try {
       if (editingProduct) {
-        updateProduct(editingProduct.id, {
+        await updateProduct(editingProduct.id, {
           name: formData.name,
           categoryId: formData.categoryId,
           price: parseFloat(formData.price),
           stock: parseInt(formData.stock) || 0,
+          lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
+          unit: formData.unit,
           description: formData.description,
         });
-        
+
         toast({
           title: "Produto atualizado!",
           description: "O produto foi atualizado com sucesso."
         });
       } else {
-        const category = categories.find(c => c.id === formData.categoryId);
-        addProduct({
+        await addProduct({
           name: formData.name,
           categoryId: formData.categoryId,
-          category: category?.name || "",
           price: parseFloat(formData.price),
           stock: parseInt(formData.stock) || 0,
+          lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
+          unit: formData.unit,
           description: formData.description,
         });
-        
+
         toast({
           title: "Produto criado!",
           description: "O novo produto foi criado com sucesso."
@@ -66,10 +73,10 @@ export default function Products() {
 
       resetForm();
       setDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -82,6 +89,8 @@ export default function Products() {
       categoryId: product.categoryId,
       price: product.price.toString(),
       stock: product.stock.toString(),
+      lowStockThreshold: product.lowStockThreshold?.toString() ?? "10",
+      unit: product.unit ?? "pcs",
       description: product.description || "",
     });
     setDialogOpen(true);
@@ -89,16 +98,16 @@ export default function Products() {
 
   const handleDelete = async (id: string) => {
     try {
-      deleteProduct(id);
-      
+      await deleteProduct(id);
+
       toast({
         title: "Produto eliminado!",
         description: "O produto foi eliminado com sucesso."
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao eliminar produto",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -110,6 +119,8 @@ export default function Products() {
       categoryId: "",
       price: "",
       stock: "",
+      lowStockThreshold: "10",
+      unit: "pcs",
       description: "",
     });
     setEditingProduct(null);
@@ -127,6 +138,8 @@ export default function Products() {
     return matchesSearch && matchesCategory;
   });
 
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filteredProducts);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -138,7 +151,7 @@ export default function Products() {
               Gestão do catálogo de produtos hidráulicos
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -215,6 +228,34 @@ export default function Products() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="unit">Unidade</Label>
+                    <Select
+                      value={formData.unit}
+                      onValueChange={(value: "metros" | "pcs") => setFormData({...formData, unit: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pcs">Peças (pcs)</SelectItem>
+                        <SelectItem value="metros">Metros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="lowStockThreshold">Limite de Stock Baixo</Label>
+                    <Input
+                      id="lowStockThreshold"
+                      type="number"
+                      min="0"
+                      value={formData.lowStockThreshold}
+                      onChange={(e) => setFormData({...formData, lowStockThreshold: e.target.value})}
+                      placeholder="10"
+                    />
+                  </div>
+                </div>
                 <div className="flex space-x-2">
                   <Button type="submit">
                     {editingProduct ? 'Atualizar' : 'Criar'}
@@ -247,7 +288,7 @@ export default function Products() {
                 <AlertTriangle className="h-5 w-5 text-warning" />
                 <div>
                   <p className="text-2xl font-bold text-warning">
-                    {products.filter(p => p.stock < 10).length}
+                    {products.filter(p => p.stock <= p.lowStockThreshold).length}
                   </p>
                   <p className="text-sm text-muted-foreground">Stock Baixo</p>
                 </div>
@@ -331,7 +372,7 @@ export default function Products() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProducts.map((product) => (
+                  pageItems.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell>
                         <div>
@@ -346,12 +387,12 @@ export default function Products() {
                       </TableCell>
                       <TableCell>{product.price.toFixed(2)} MTN</TableCell>
                       <TableCell>
-                        <span className={product.stock < 10 ? "text-warning font-medium" : ""}>
-                          {product.stock}
+                        <span className={product.stock <= product.lowStockThreshold ? "text-warning font-medium" : ""}>
+                          {product.stock} {product.unit}
                         </span>
                       </TableCell>
                       <TableCell>
-                        {product.stock < 10 ? (
+                        {product.stock <= product.lowStockThreshold ? (
                           <Badge variant="destructive" className="bg-warning text-warning-foreground">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             Stock Baixo
@@ -377,6 +418,14 @@ export default function Products() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </CardContent>
         </Card>
       </div>

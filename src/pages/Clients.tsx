@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Users, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Users, Edit, Trash2, Eye } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Clients() {
   const { clients, addClient, updateClient, deleteClient } = useData();
@@ -21,6 +25,7 @@ export default function Clients() {
 
   const [formData, setFormData] = useState({
     name: "",
+    nuit: "",
     address: "",
     phone: "",
     email: "",
@@ -30,25 +35,27 @@ export default function Clients() {
     e.preventDefault();
     try {
       if (editingClient) {
-        updateClient(editingClient.id, {
+        await updateClient(editingClient.id, {
           name: formData.name,
+          nuit: formData.nuit,
           address: formData.address,
           phone: formData.phone,
           email: formData.email
         });
-        
+
         toast({
           title: "Cliente atualizado!",
           description: "O cliente foi atualizado com sucesso."
         });
       } else {
-        addClient({
+        await addClient({
           name: formData.name,
+          nuit: formData.nuit,
           address: formData.address,
           phone: formData.phone,
           email: formData.email
         });
-        
+
         toast({
           title: "Cliente criado!",
           description: "O novo cliente foi criado com sucesso."
@@ -57,10 +64,10 @@ export default function Clients() {
 
       resetForm();
       setDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -70,25 +77,26 @@ export default function Clients() {
     setEditingClient(client);
     setFormData({
       name: client.name,
-      address: client.address,
-      phone: client.phone,
-      email: client.email,
+      nuit: client.nuit || "",
+      address: client.address || "",
+      phone: client.phone || "",
+      email: client.email || "",
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      deleteClient(id);
-      
+      await deleteClient(id);
+
       toast({
         title: "Cliente eliminado!",
         description: "O cliente foi eliminado com sucesso."
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao eliminar cliente",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -97,6 +105,7 @@ export default function Clients() {
   const resetForm = () => {
     setFormData({
       name: "",
+      nuit: "",
       address: "",
       phone: "",
       email: "",
@@ -111,9 +120,11 @@ export default function Clients() {
 
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.phone.includes(searchTerm)
+    (client.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (client.phone || "").includes(searchTerm)
   );
+
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filteredClients);
 
   return (
     <Layout>
@@ -126,7 +137,7 @@ export default function Clients() {
               Gestão da carteira de clientes
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -151,6 +162,15 @@ export default function Clients() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="nuit">NUIT</Label>
+                  <Input
+                    id="nuit"
+                    value={formData.nuit}
+                    onChange={(e) => setFormData({...formData, nuit: e.target.value})}
+                    placeholder="123456789"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
@@ -158,7 +178,6 @@ export default function Clients() {
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="cliente@exemplo.com"
-                    required
                   />
                 </div>
                 <div>
@@ -168,7 +187,6 @@ export default function Clients() {
                     value={formData.phone}
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     placeholder="+258 84 123 4567"
-                    required
                   />
                 </div>
                 <div>
@@ -178,7 +196,6 @@ export default function Clients() {
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
                     placeholder="Endereço completo do cliente"
-                    required
                   />
                 </div>
                 <div className="flex space-x-2">
@@ -271,11 +288,13 @@ export default function Clients() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredClients.map((client) => (
+                  {pageItems.map((client) => (
                     <TableRow key={client.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{client.name}</p>
+                          <Link to={`/clients/${client.id}`} className="font-medium hover:text-primary hover:underline">
+                            {client.name}
+                          </Link>
                           <p className="text-sm text-muted-foreground">{client.address}</p>
                         </div>
                       </TableCell>
@@ -290,6 +309,11 @@ export default function Clients() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
+                          <Link to={`/clients/${client.id}`}>
+                            <Button variant="outline" size="sm" title="Ver detalhes">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           <Button variant="outline" size="sm" onClick={() => handleEdit(client)}>
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -303,6 +327,14 @@ export default function Clients() {
                 </TableBody>
               </Table>
             )}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </CardContent>
         </Card>
       </div>

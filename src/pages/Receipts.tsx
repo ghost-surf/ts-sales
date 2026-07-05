@@ -1,39 +1,54 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "@/components/Layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Receipt, Search, Eye, Download } from "lucide-react";
+import { Receipt, Search, Eye, Download, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { normalizeSearch } from "@/lib/utils";
+import { Payment } from "@/types";
 
 export default function Receipts() {
-  const { getInvoices } = useData();
+  const { payments, documents, registerPayment } = useData();
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Mock receipts data based on paid invoices
-  const invoices = getInvoices();
-  const paidInvoices = invoices.filter(invoice => invoice.status === "Paga");
-  
-  const mockReceipts = paidInvoices.map((invoice, index) => ({
-    id: `REC-${String(index + 1).padStart(4, "0")}/25`,
-    invoiceId: invoice.id,
-    clientName: invoice.clientName,
-    amount: invoice.total,
-    paymentMethod: index % 2 === 0 ? "numerario" : "cheque",
-    chequeNumber: index % 2 === 1 ? `CHQ-${1000 + index}` : null,
-    date: invoice.date,
-    operatorName: "Sistema HydroStock"
-  }));
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+  const [method, setMethod] = useState<"numerario" | "cheque">("numerario");
+  const [chequeNumber, setChequeNumber] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const filteredReceipts = mockReceipts.filter(receipt =>
-    receipt.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    receipt.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    receipt.invoiceId.toLowerCase().includes(searchTerm.toLowerCase())
+  const clientNamesFor = (payment: Payment) => {
+    const names = payment.documents
+      .map((alloc) => documents.find((d) => d.id === alloc.documentId)?.clientName)
+      .filter((name): name is string => Boolean(name));
+    return [...new Set(names)].join(", ") || "—";
+  };
+
+  const documentCodesFor = (payment: Payment) =>
+    payment.documents.map((alloc) => alloc.document?.code ?? alloc.documentId).join(", ");
+
+  const filteredReceipts = payments.filter((receipt) =>
+    receipt.receiptCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    clientNamesFor(receipt).toLowerCase().includes(searchTerm.toLowerCase()) ||
+    documentCodesFor(receipt).toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const today = new Date().toISOString().split('T')[0];
 
   const getPaymentMethodBadge = (method: string) => {
     return method === 'numerario' ? (
@@ -43,18 +58,82 @@ export default function Receipts() {
     );
   };
 
-  const handleViewReceipt = (receipt: any) => {
-    toast({
-      title: "Visualizar Recibo",
-      description: `Abrindo recibo ${receipt.id}...`,
+  const handleViewReceipt = (receipt: Payment) => navigate(`/receipt/${receipt.id}`);
+  const handleDownloadReceipt = (receipt: Payment) => navigate(`/receipt/${receipt.id}`);
+
+  // ---- New receipt dialog: pick several unpaid/partially-paid invoices ----
+  const payableInvoices = useMemo(
+    () =>
+      documents
+        .filter((d) => d.type === "FACT" && d.status !== "paid" && d.status !== "canceled")
+        .map((d) => ({ ...d, remaining: Math.max(d.total - d.paidAmount, 0) }))
+        .filter((d) => d.remaining > 0.01)
+        .filter(
+          (d) =>
+            normalizeSearch(d.code).includes(normalizeSearch(invoiceSearch)) ||
+            normalizeSearch(d.clientName).includes(normalizeSearch(invoiceSearch))
+        ),
+    [documents, invoiceSearch]
+  );
+
+  const totalAmount = selectedIds.reduce((sum, id) => sum + (parseFloat(amounts[id]) || 0), 0);
+
+  const openNewReceiptDialog = () => {
+    setSelectedIds([]);
+    setAmounts({});
+    setMethod("numerario");
+    setChequeNumber("");
+    setInvoiceSearch("");
+    setDialogOpen(true);
+  };
+
+  const toggleInvoice = (invoiceId: string, remaining: number) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(invoiceId)) {
+        return prev.filter((id) => id !== invoiceId);
+      }
+      setAmounts((prevAmounts) => ({ ...prevAmounts, [invoiceId]: remaining.toFixed(2) }));
+      return [...prev, invoiceId];
     });
   };
 
-  const handleDownloadReceipt = (receipt: any) => {
-    toast({
-      title: "Download Iniciado",
-      description: `O PDF do recibo ${receipt.id} será baixado em breve.`,
-    });
+  const handleCreateReceipt = async () => {
+    if (selectedIds.length === 0) {
+      toast({ title: "Erro", description: "Selecione pelo menos uma fatura", variant: "destructive" });
+      return;
+    }
+    if (method === "cheque" && !chequeNumber.trim()) {
+      toast({ title: "Erro", description: "Indique o número do cheque", variant: "destructive" });
+      return;
+    }
+    const allocations = selectedIds.map((id) => ({ documentId: id, amount: parseFloat(amounts[id]) || 0 }));
+    if (allocations.some((a) => a.amount <= 0)) {
+      toast({ title: "Erro", description: "Todos os valores alocados devem ser maiores que zero", variant: "destructive" });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payment = await registerPayment({
+        method,
+        chequeNumber: method === "cheque" ? chequeNumber : undefined,
+        allocations,
+      });
+      setDialogOpen(false);
+      toast({
+        title: "Recibo criado!",
+        description: `Recibo ${payment.receiptCode} criado com sucesso, cobrindo ${allocations.length} fatura(s).`,
+      });
+      navigate(`/receipt/${payment.id}`);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof ApiError ? error.message : "Erro ao criar recibo",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -67,6 +146,113 @@ export default function Receipts() {
               Histórico de pagamentos e recibos emitidos
             </p>
           </div>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? openNewReceiptDialog() : setDialogOpen(false))}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Recibo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Novo Recibo</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Pesquisar fatura por código ou cliente..."
+                    value={invoiceSearch}
+                    onChange={(e) => setInvoiceSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <ScrollArea className="h-64 rounded-md border">
+                  <div className="p-2 space-y-1">
+                    {payableInvoices.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        Nenhuma fatura em aberto encontrada
+                      </p>
+                    )}
+                    {payableInvoices.map((invoice) => {
+                      const checked = selectedIds.includes(invoice.id);
+                      return (
+                        <div key={invoice.id} className="flex items-center gap-3 p-2 border rounded-md">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleInvoice(invoice.id, invoice.remaining)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {invoice.code} · {invoice.clientName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Total: {invoice.total.toFixed(2)} MTN · Saldo: {invoice.remaining.toFixed(2)} MTN
+                            </p>
+                          </div>
+                          {checked && (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max={invoice.remaining}
+                              value={amounts[invoice.id] ?? ""}
+                              onChange={(e) => setAmounts((prev) => ({ ...prev, [invoice.id]: e.target.value }))}
+                              className="w-28 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="new-receipt-method">Forma de Pagamento</Label>
+                    <Select value={method} onValueChange={(v: "numerario" | "cheque") => setMethod(v)}>
+                      <SelectTrigger id="new-receipt-method">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="numerario">Numerário</SelectItem>
+                        <SelectItem value="cheque">Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {method === "cheque" && (
+                    <div>
+                      <Label htmlFor="new-receipt-cheque">Número do Cheque</Label>
+                      <Input
+                        id="new-receipt-cheque"
+                        value={chequeNumber}
+                        onChange={(e) => setChequeNumber(e.target.value)}
+                        placeholder="Ex: CHQ-1001"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border-t pt-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedIds.length} fatura(s) selecionada(s)
+                    </p>
+                    <p className="text-lg font-semibold">{totalAmount.toFixed(2)} MTN</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button onClick={handleCreateReceipt} disabled={submitting || selectedIds.length === 0}>
+                      {submitting ? "A criar..." : "Criar Recibo"}
+                    </Button>
+                    <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Summary Cards */}
@@ -76,7 +262,7 @@ export default function Receipts() {
               <div className="flex items-center space-x-2">
                 <Receipt className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-2xl font-bold">{mockReceipts.length}</p>
+                  <p className="text-2xl font-bold">{payments.length}</p>
                   <p className="text-sm text-muted-foreground">Total de Recibos</p>
                 </div>
               </div>
@@ -88,7 +274,7 @@ export default function Receipts() {
                 <Receipt className="h-5 w-5 text-success" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {mockReceipts.reduce((sum, r) => sum + r.amount, 0).toFixed(2)} MTN
+                    {payments.reduce((sum, r) => sum + r.amount, 0).toFixed(2)} MTN
                   </p>
                   <p className="text-sm text-muted-foreground">Valor Total Recebido</p>
                 </div>
@@ -101,7 +287,7 @@ export default function Receipts() {
                 <Receipt className="h-5 w-5 text-info" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {mockReceipts.filter(r => r.date === new Date().toISOString().split('T')[0]).length}
+                    {payments.filter(r => r.paymentDate.startsWith(today)).length}
                   </p>
                   <p className="text-sm text-muted-foreground">Recibos Hoje</p>
                 </div>
@@ -136,7 +322,7 @@ export default function Receipts() {
                   {searchTerm ? 'Nenhum recibo encontrado para a pesquisa' : 'Nenhum recibo encontrado'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Os recibos são gerados automaticamente quando as faturas são pagas.
+                  Clique em "Novo Recibo" para registar um pagamento sobre uma ou mais faturas.
                 </p>
               </div>
             ) : (
@@ -145,7 +331,7 @@ export default function Receipts() {
                   <TableRow>
                     <TableHead>Código</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Fatura</TableHead>
+                    <TableHead>Fatura(s)</TableHead>
                     <TableHead>Forma de Pagamento</TableHead>
                     <TableHead>Valor</TableHead>
                     <TableHead>Data</TableHead>
@@ -157,15 +343,15 @@ export default function Receipts() {
                   {filteredReceipts.map((receipt) => (
                     <TableRow key={receipt.id}>
                       <TableCell className="font-medium font-mono">
-                        {receipt.id}
+                        {receipt.receiptCode}
                       </TableCell>
-                      <TableCell>{receipt.clientName}</TableCell>
+                      <TableCell>{clientNamesFor(receipt)}</TableCell>
                       <TableCell className="font-mono text-sm">
-                        {receipt.invoiceId}
+                        {documentCodesFor(receipt)}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          {getPaymentMethodBadge(receipt.paymentMethod)}
+                          {getPaymentMethodBadge(receipt.method)}
                           {receipt.chequeNumber && (
                             <div className="text-xs text-muted-foreground">
                               Nº {receipt.chequeNumber}
@@ -177,9 +363,9 @@ export default function Receipts() {
                         {receipt.amount.toFixed(2)} MTN
                       </TableCell>
                       <TableCell>
-                        {new Date(receipt.date).toLocaleDateString()}
+                        {new Date(receipt.paymentDate).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{receipt.operatorName}</TableCell>
+                      <TableCell>{receipt.operator?.name ?? "—"}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Button

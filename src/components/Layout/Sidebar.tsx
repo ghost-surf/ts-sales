@@ -2,40 +2,50 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth, UserRole } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   Package,
   Users,
   ShoppingCart,
   Receipt,
+  FileText,
   Settings,
   BarChart3,
   Wrench,
   FolderOpen,
+  Percent,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from "lucide-react";
 
-const navigation = [
+const navigation: Array<{ name: string; href: string; icon: typeof LayoutDashboard; roles?: UserRole[] }> = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Vendas", href: "/sales", icon: ShoppingCart },
+  { name: "Faturas", href: "/invoices", icon: Receipt },
+  { name: "Cotações", href: "/quotations", icon: FileText },
   { name: "Produtos", href: "/products", icon: Package },
-  { name: "Categorias", href: "/categories", icon: FolderOpen },
-  { name: "Serviços", href: "/services", icon: Wrench },
+  { name: "Categorias", href: "/categories", icon: FolderOpen, roles: ["admin"] },
+  { name: "Serviços", href: "/services", icon: Wrench, roles: ["admin"] },
+  { name: "Impostos", href: "/taxes", icon: Percent, roles: ["admin"] },
   { name: "Clientes", href: "/clients", icon: Users },
   { name: "Recibos", href: "/receipts", icon: Receipt },
-  { name: "Utilizadores", href: "/users", icon: Settings },
+  { name: "Utilizadores", href: "/users", icon: Settings, roles: ["admin"] },
   { name: "Relatórios", href: "/reports", icon: BarChart3 },
 ];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { user, logout } = useAuth();
+
+  const visibleNavigation = navigation.filter((item) => !item.roles || (user && item.roles.includes(user.role)));
 
   return (
     <div
       className={cn(
-        "bg-card border-r border-border transition-all duration-300 flex flex-col",
+        "print:hidden bg-card border-r border-border transition-all duration-300 flex flex-col",
         collapsed ? "w-16" : "w-64"
       )}
     >
@@ -61,7 +71,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-1">
-        {navigation.map((item) => {
+        {visibleNavigation.map((item) => {
           const isActive = location.pathname === item.href;
           return (
             <Link
@@ -83,24 +93,37 @@ export function Sidebar() {
       </nav>
 
       {/* User Info */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-3">
         {!collapsed ? (
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-primary-foreground">A</span>
+              <span className="text-sm font-medium text-primary-foreground">
+                {user?.name?.charAt(0).toUpperCase() ?? "?"}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">Admin</p>
-              <p className="text-xs text-muted-foreground">admin@hydrostock.com</p>
+              <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
         ) : (
           <div className="flex justify-center">
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium text-primary-foreground">A</span>
+              <span className="text-sm font-medium text-primary-foreground">
+                {user?.name?.charAt(0).toUpperCase() ?? "?"}
+              </span>
             </div>
           </div>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => logout()}
+          className={cn("w-full text-muted-foreground hover:text-foreground", collapsed ? "px-0" : "justify-start")}
+        >
+          <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
+          {!collapsed && "Sair"}
+        </Button>
       </div>
     </div>
   );

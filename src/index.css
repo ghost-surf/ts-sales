@@ -129,3 +129,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Printing a document (invoice/quotation/receipt) should only render the
+   printable card, not the app shell (sidebar, header, page action bar). */
+@media print {
+  .app-shell,
+  .app-shell * {
+    overflow: visible !important;
+    height: auto !important;
+  }
+}

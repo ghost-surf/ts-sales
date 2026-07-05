@@ -1,11 +1,13 @@
-import { Bell, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useData } from "@/contexts/DataContext";
 
 export function Header() {
+  const { products } = useData();
+  const lowStockCount = products.filter((p) => p.stock <= p.lowStockThreshold).length;
+
   return (
-    <header className="bg-card border-b border-border px-6 py-4">
+    <header className="print:hidden bg-card border-b border-border px-6 py-4">
       <div className="flex items-center justify-between">
         {/* Search */}
         <div className="flex-1 max-w-md">
@@ -21,22 +23,15 @@ export function Header() {
 
         {/* Actions */}
         <div className="flex items-center space-x-4">
-          {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-            >
-              3
-            </Badge>
-          </Button>
-
           {/* Stock Alert */}
-          <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-warning/10 border border-warning/20 rounded-md">
-            <div className="w-2 h-2 bg-warning rounded-full"></div>
-            <span className="text-sm text-warning-foreground">5 produtos em stock baixo</span>
-          </div>
+          {lowStockCount > 0 && (
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1 bg-warning/10 border border-warning/20 rounded-md">
+              <div className="w-2 h-2 bg-warning rounded-full"></div>
+              <span className="text-sm text-warning-foreground">
+                {lowStockCount} produto{lowStockCount > 1 ? "s" : ""} em stock baixo
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </header>

@@ -1,36 +1,94 @@
+import { useEffect, useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { MetricCard } from "@/components/Dashboard/MetricCard";
 import { StockAlerts } from "@/components/Dashboard/StockAlerts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { useData } from "@/contexts/DataContext";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { api } from "@/lib/api";
+import { documentStatusLabel } from "@/lib/statusLabels";
 import {
   TrendingUp,
   Package,
   Users,
   Receipt,
-  ShoppingCart,
   AlertTriangle,
   Euro,
   FileText,
 } from "lucide-react";
 
+interface SalesReport {
+  series: Array<{ date: string; totalSales: number; ordersCount: number }>;
+}
+
+function buildLast7Days(series: SalesReport["series"]) {
+  const byDate = new Map(series.map((entry) => [entry.date, entry]));
+  const days: Array<{ label: string; total: number }> = [];
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().slice(0, 10);
+    days.push({
+      label: date.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit" }),
+      total: byDate.get(key)?.totalSales ?? 0,
+    });
+  }
+  return days;
+}
+
+interface RecentDocument {
+  id: string;
+  code: string;
+  total: number;
+  createdAt: string;
+  displayStatus: string;
+  client?: { name: string };
+}
+
+interface DashboardSummary {
+  todaySales: number;
+  todayInvoicesCount: number;
+  totalStockUnits: number;
+  totalProducts: number;
+  lowStockCount: number;
+  clientsCount: number;
+  recentInvoices: RecentDocument[];
+  recentQuotations: RecentDocument[];
+}
+
+const EMPTY_SUMMARY: DashboardSummary = {
+  todaySales: 0,
+  todayInvoicesCount: 0,
+  totalStockUnits: 0,
+  totalProducts: 0,
+  lowStockCount: 0,
+  clientsCount: 0,
+  recentInvoices: [],
+  recentQuotations: [],
+};
+
 export default function Dashboard() {
-  const { products, clients, getInvoices, getQuotations } = useData();
-  
-  const invoices = getInvoices();
-  const quotations = getQuotations();
-  
-  // Calculate metrics
-  const todaySales = invoices
-    .filter(inv => inv.date === new Date().toISOString().split('T')[0])
-    .reduce((sum, inv) => sum + inv.total, 0);
-  
-  const totalProducts = products.reduce((sum, product) => sum + product.stock, 0);
-  const lowStockProducts = products.filter(product => product.stock < 10);
-  
-  const recentInvoices = invoices.slice(-3);
-  const recentQuotations = quotations.slice(-3);
+  const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
+  const [chartData, setChartData] = useState<Array<{ label: string; total: number }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<DashboardSummary>("/reports/dashboard").then((data) => {
+      if (!cancelled) setSummary(data);
+    });
+
+    const from = new Date();
+    from.setDate(from.getDate() - 6);
+    from.setHours(0, 0, 0, 0);
+    api.get<SalesReport>(`/reports/sales?from=${from.toISOString()}`).then((data) => {
+      if (!cancelled) setChartData(buildLast7Days(data.series));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -46,30 +104,27 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Vendas Hoje"
-            value={`${todaySales.toFixed(2)} MTN`}
-            subtitle={`${recentInvoices.length} faturas emitidas`}
+            value={`${summary.todaySales.toFixed(2)} MTN`}
+            subtitle={`${summary.todayInvoicesCount} faturas pagas`}
             icon={Euro}
-            trend={{ value: 12.5, label: "vs ontem" }}
             variant="success"
           />
           <MetricCard
             title="Produtos em Stock"
-            value={totalProducts.toString()}
-            subtitle={`${products.length} produtos diferentes`}
+            value={summary.totalStockUnits.toString()}
+            subtitle={`${summary.totalProducts} produtos diferentes`}
             icon={Package}
-            trend={{ value: -2.3, label: "vs mês anterior" }}
           />
           <MetricCard
             title="Clientes Ativos"
-            value={clients.length.toString()}
+            value={summary.clientsCount.toString()}
             subtitle="Clientes cadastrados"
             icon={Users}
-            trend={{ value: 8.1, label: "vs mês anterior" }}
             variant="success"
           />
           <MetricCard
             title="Stock Baixo"
-            value={lowStockProducts.length.toString()}
+            value={summary.lowStockCount.toString()}
             subtitle="Requer atenção urgente"
             icon={AlertTriangle}
             variant="warning"
@@ -87,13 +142,36 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
-                <div className="text-center">
-                  <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Gráfico de vendas será implementado
-                  </p>
-                </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 12 }}
+                      className="[&_text]:fill-muted-foreground"
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      className="[&_text]:fill-muted-foreground"
+                      axisLine={false}
+                      tickLine={false}
+                      width={40}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => [`${value.toFixed(2)} MTN`, "Vendas"]}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "0.5rem",
+                        fontSize: "0.875rem",
+                      }}
+                    />
+                    <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
@@ -106,92 +184,100 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Invoices */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="flex items-center space-x-2">
                 <Receipt className="h-5 w-5 text-primary" />
                 <span>Faturas Recentes</span>
               </CardTitle>
+              <Link to="/invoices" className="text-sm text-primary hover:underline">Ver todas</Link>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentInvoices.map((invoice) => (
+                {summary.recentInvoices.map((invoice) => (
                   <div
                     key={invoice.id}
                     className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
                   >
                     <div>
-                      <Link 
+                      <Link
                         to={`/invoice/${invoice.id}`}
                         className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                       >
-                        {invoice.id}
+                        {invoice.code}
                       </Link>
-                      <p className="text-sm text-muted-foreground">{invoice.clientName}</p>
+                      <p className="text-sm text-muted-foreground">{invoice.client?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(invoice.date).toLocaleDateString()}
+                        {new Date(invoice.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-foreground">{invoice.total.toFixed(2)} MTN</p>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
-                          invoice.status === "Paga"
+                          invoice.displayStatus === "paid"
                             ? "bg-success/10 text-success"
                             : "bg-warning/10 text-warning"
                         }`}
                       >
-                        {invoice.status}
+                        {documentStatusLabel("FACT", invoice.displayStatus as any)}
                       </span>
                     </div>
                   </div>
                 ))}
+                {summary.recentInvoices.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma fatura ainda</p>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Recent Quotations */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-primary" />
                 <span>Cotações Recentes</span>
               </CardTitle>
+              <Link to="/quotations" className="text-sm text-primary hover:underline">Ver todas</Link>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentQuotations.map((quotation) => (
+                {summary.recentQuotations.map((quotation) => (
                   <div
                     key={quotation.id}
                     className="flex items-center justify-between p-3 bg-muted/20 rounded-lg"
                   >
                     <div>
-                      <Link 
+                      <Link
                         to={`/quotation/${quotation.id}`}
                         className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer"
                       >
-                        {quotation.id}
+                        {quotation.code}
                       </Link>
-                      <p className="text-sm text-muted-foreground">{quotation.clientName}</p>
+                      <p className="text-sm text-muted-foreground">{quotation.client?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(quotation.date).toLocaleDateString()}
+                        {new Date(quotation.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium text-foreground">{quotation.total.toFixed(2)} MTN</p>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
-                          quotation.status === "Aceite"
+                          quotation.displayStatus === "accepted"
                             ? "bg-success/10 text-success"
-                            : quotation.status === "Pendente"
+                            : quotation.displayStatus === "issued"
                             ? "bg-warning/10 text-warning"
                             : "bg-destructive/10 text-destructive"
                         }`}
                       >
-                        {quotation.status}
+                        {documentStatusLabel("COT", quotation.displayStatus as any)}
                       </span>
                     </div>
                   </div>
                 ))}
+                {summary.recentQuotations.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma cotação ainda</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -200,20 +286,3 @@ export default function Dashboard() {
     </Layout>
   );
 }
-
-const BarChart3 = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-    />
-  </svg>
-);

@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  operador
+}
+
+enum UnitType {
+  metros
+  pcs
+}
+
+enum DocumentType {
+  FACT
+  COT
+}
+
+enum DocumentStatus {
+  draft
+  issued
+  paid
+  canceled
+  accepted
+  rejected
+}
+
+enum ItemType {
+  product
+  service
+}
+
+enum PaymentMethod {
+  numerario
+  cheque
+}
+
+enum MovementType {
+  debit
+  credit
+}
+
+enum CounterType {
+  FACT
+  COT
+  REC
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(operador)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens  RefreshToken[]
+  operatedDocs   Document[]     @relation("DocumentOperator")
+  operatedPays   Payment[]      @relation("PaymentOperator")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  nuit      String?
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  unit      UnitType
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+  services Service[]
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  categoryId        String
+  name              String
+  description       String?
+  price             Decimal  @db.Decimal(10, 2)
+  stockQty          Decimal  @default(0) @db.Decimal(10, 2)
+  lowStockThreshold Decimal  @default(0) @db.Decimal(10, 2)
+  unit              UnitType
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  stockMovements StockMovement[]
+
+  @@index([categoryId])
+}
+
+model Service {
+  id         String   @id @default(cuid())
+  categoryId String
+  name       String
+  price      Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([categoryId])
+}
+
+model Tax {
+  id         String  @id @default(cuid())
+  name       String
+  percentage Decimal @db.Decimal(5, 2)
+}
+
+model Document {
+  id                String         @id @default(cuid())
+  type              DocumentType
+  code              String         @unique
+  clientId          String
+  operatorId        String
+  subtotalProducts  Decimal        @default(0) @db.Decimal(10, 2)
+  subtotalServices  Decimal        @default(0) @db.Decimal(10, 2)
+  discountApplied   Boolean        @default(false)
+  vatApplied        Boolean        @default(true)
+  discountValue     Decimal        @default(0) @db.Decimal(10, 2)
+  vatValue          Decimal        @default(0) @db.Decimal(10, 2)
+  total             Decimal        @default(0) @db.Decimal(10, 2)
+  status            DocumentStatus @default(draft)
+  dueDate           DateTime?
+  sourceQuotationId String?        @unique
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  client           Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  operator         User              @relation("DocumentOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  items            DocumentItem[]
+  paymentLinks     PaymentDocument[]
+  stockMovements   StockMovement[]
+  sourceQuotation  Document?         @relation("QuotationConversion", fields: [sourceQuotationId], references: [id])
+  convertedInvoice Document?         @relation("QuotationConversion")
+
+  @@index([clientId])
+  @@index([operatorId])
+  @@index([type, status])
+}
+
+model DocumentItem {
+  id          String    @id @default(cuid())
+  documentId  String
+  itemType    ItemType
+  itemId      String
+  description String
+  unitPrice   Decimal   @db.Decimal(10, 2)
+  quantity    Decimal   @default(1) @db.Decimal(10, 2)
+  unit        UnitType?
+  lineTotal   Decimal   @db.Decimal(10, 2)
+  createdAt   DateTime  @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  receiptCode  String        @unique
+  paymentDate  DateTime      @default(now())
+  method       PaymentMethod
+  chequeNumber String?
+  amount       Decimal       @db.Decimal(10, 2)
+  operatorId   String
+  createdAt    DateTime      @default(now())
+
+  operator  User              @relation("PaymentOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  documents PaymentDocument[]
+}
+
+model PaymentDocument {
+  id         String  @id @default(cuid())
+  paymentId  String
+  documentId String
+  amount     Decimal @db.Decimal(10, 2)
+
+  payment  Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, documentId])
+  @@index([documentId])
+}
+
+model Counter {
+  id         String      @id @default(cuid())
+  year       Int
+  type       CounterType
+  lastNumber Int         @default(0)
+
+  @@unique([year, type])
+}
+
+model StockMovement {
+  id         String       @id @default(cuid())
+  productId  String
+  documentId String?
+  type       MovementType
+  quantity   Decimal      @db.Decimal(10, 2)
+  unit       UnitType
+  note       String?
+  createdAt  DateTime     @default(now())
+
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([documentId])
+}

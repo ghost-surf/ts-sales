@@ -11,35 +11,41 @@ export interface User {
 export interface Client {
   id: string;
   name: string;
-  address: string;
-  phone: string;
-  email: string;
+  nuit?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
   createdAt: string;
 }
+
+export type UnitType = "metros" | "pcs";
 
 export interface Category {
   id: string;
   name: string;
-  description?: string;
+  unit: UnitType;
   createdAt: string;
 }
 
 export interface Product {
   id: string;
-  name: string;
   categoryId: string;
   category: string;
+  name: string;
+  description?: string | null;
   price: number;
   stock: number;
-  description?: string;
+  lowStockThreshold: number;
+  unit: UnitType;
   createdAt: string;
 }
 
 export interface Service {
   id: string;
+  categoryId: string;
+  category: string;
   name: string;
   price: number;
-  description?: string;
   createdAt: string;
 }
 
@@ -49,42 +55,58 @@ export interface Tax {
   percentage: number;
 }
 
-export interface InvoiceItem {
+export type DocumentType = "FACT" | "COT";
+export type DocumentStatus = "draft" | "issued" | "paid" | "canceled" | "accepted" | "rejected";
+export type DisplayStatus = DocumentStatus | "overdue" | "expired";
+
+export interface DocumentItem {
   id: string;
-  type: "product" | "service";
+  itemType: "product" | "service";
   itemId: string;
-  name: string;
-  quantity: number;
+  description: string;
   unitPrice: number;
-  total: number;
+  quantity: number;
+  unit?: UnitType | null;
+  lineTotal: number;
 }
 
-export interface Invoice {
+export interface AppDocument {
   id: string;
+  type: DocumentType;
+  code: string;
   clientId: string;
   clientName: string;
-  date: string;
-  dueDate: string;
-  status: "Paga" | "Pendente" | "Vencida";
-  items: InvoiceItem[];
-  subtotal: number;
-  taxAmount: number;
+  operatorId: string;
+  subtotalProducts: number;
+  subtotalServices: number;
+  discountApplied: boolean;
+  vatApplied: boolean;
+  discountValue: number;
+  vatValue: number;
   total: number;
-  type: "invoice";
+  status: DocumentStatus;
+  displayStatus: DisplayStatus;
+  dueDate?: string | null;
+  items: DocumentItem[];
+  paidAmount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Quotation {
+export interface PaymentAllocation {
+  documentId: string;
+  amount: number;
+  document?: { id: string; code: string; type: DocumentType; total: number; clientId: string };
+}
+
+export interface Payment {
   id: string;
-  clientId: string;
-  clientName: string;
-  date: string;
-  validUntil: string;
-  status: "Pendente" | "Aceite" | "Rejeitada" | "Expirada";
-  items: InvoiceItem[];
-  subtotal: number;
-  taxAmount: number;
-  total: number;
-  type: "quotation";
+  receiptCode: string;
+  paymentDate: string;
+  method: "numerario" | "cheque";
+  chequeNumber?: string | null;
+  amount: number;
+  operatorId: string;
+  operator?: { id: string; name: string; email: string };
+  documents: PaymentAllocation[];
 }
-
-export type Document = Invoice | Quotation;

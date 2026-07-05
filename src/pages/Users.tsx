@@ -11,13 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Edit, Trash2, Users, Shield, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function UsersPage() {
   const { users, addUser, updateUser, deleteUser } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -29,23 +32,25 @@ export default function UsersPage() {
     e.preventDefault();
     try {
       if (editingUser) {
-        updateUser(editingUser.id, {
+        await updateUser(editingUser.id, {
           name: formData.name,
           email: formData.email,
           role: formData.role,
+          ...(formData.password ? { password: formData.password } : {}),
         });
-        
+
         toast({
           title: "Utilizador atualizado!",
           description: "O utilizador foi atualizado com sucesso."
         });
       } else {
-        addUser({
+        await addUser({
           name: formData.name,
           email: formData.email,
+          password: formData.password,
           role: formData.role,
         });
-        
+
         toast({
           title: "Utilizador criado!",
           description: "O novo utilizador foi criado com sucesso."
@@ -54,10 +59,10 @@ export default function UsersPage() {
 
       resetForm();
       setDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -76,16 +81,16 @@ export default function UsersPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      deleteUser(id);
-      
+      await deleteUser(id);
+
       toast({
         title: "Utilizador eliminado!",
         description: "O utilizador foi eliminado com sucesso."
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao eliminar utilizador",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -101,6 +106,8 @@ export default function UsersPage() {
     resetForm();
   };
 
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(users);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -112,7 +119,7 @@ export default function UsersPage() {
             </p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -195,13 +202,14 @@ export default function UsersPage() {
               <span>Lista de Utilizadores</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className={users.length === 0 ? undefined : "p-0"}>
             {users.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">Nenhum utilizador encontrado</p>
               </div>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -213,7 +221,7 @@ export default function UsersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
+                  {pageItems.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center space-x-2">
@@ -256,6 +264,15 @@ export default function UsersPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>

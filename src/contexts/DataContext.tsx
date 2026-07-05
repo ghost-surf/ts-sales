@@ -1,286 +1,448 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { 
-  User, Client, Category, Product, Service, Tax, Invoice, Quotation, Document 
-} from "@/types";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { api } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import {
-  mockUsers, mockClients, mockCategories, mockProducts, 
-  mockServices, mockTaxes, mockInvoices, mockQuotations
-} from "@/data/mockData";
+  User,
+  Client,
+  Category,
+  Product,
+  Service,
+  Tax,
+  AppDocument,
+  Payment,
+  UnitType,
+  DocumentStatus,
+} from "@/types";
+
+// ---- Raw API shapes -> frontend-friendly shapes -------------------------
+
+interface RawCategory {
+  id: string;
+  name: string;
+  unit: UnitType;
+  createdAt: string;
+}
+
+interface RawProduct {
+  id: string;
+  categoryId: string;
+  category: RawCategory;
+  name: string;
+  description?: string | null;
+  price: number;
+  stockQty: number;
+  lowStockThreshold: number;
+  unit: UnitType;
+  createdAt: string;
+}
+
+interface RawService {
+  id: string;
+  categoryId: string;
+  category: RawCategory;
+  name: string;
+  price: number;
+  createdAt: string;
+}
+
+function mapCategory(raw: RawCategory): Category {
+  return { id: raw.id, name: raw.name, unit: raw.unit, createdAt: raw.createdAt };
+}
+
+function mapProduct(raw: RawProduct): Product {
+  return {
+    id: raw.id,
+    categoryId: raw.categoryId,
+    category: raw.category?.name ?? "",
+    name: raw.name,
+    description: raw.description,
+    price: raw.price,
+    stock: raw.stockQty,
+    lowStockThreshold: raw.lowStockThreshold,
+    unit: raw.unit,
+    createdAt: raw.createdAt,
+  };
+}
+
+function mapService(raw: RawService): Service {
+  return {
+    id: raw.id,
+    categoryId: raw.categoryId,
+    category: raw.category?.name ?? "",
+    name: raw.name,
+    price: raw.price,
+    createdAt: raw.createdAt,
+  };
+}
+
+function mapDocument(raw: any): AppDocument {
+  return {
+    id: raw.id,
+    type: raw.type,
+    code: raw.code,
+    clientId: raw.clientId,
+    clientName: raw.client?.name ?? "",
+    operatorId: raw.operatorId,
+    subtotalProducts: raw.subtotalProducts,
+    subtotalServices: raw.subtotalServices,
+    discountApplied: raw.discountApplied,
+    vatApplied: raw.vatApplied,
+    discountValue: raw.discountValue,
+    vatValue: raw.vatValue,
+    total: raw.total,
+    status: raw.status,
+    displayStatus: raw.displayStatus ?? raw.status,
+    dueDate: raw.dueDate,
+    items: raw.items ?? [],
+    paidAmount: raw.paidAmount ?? 0,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  };
+}
+
+// ---- Context shape --------------------------------------------------------
+
+interface CreateDocumentItemInput {
+  itemType: "product" | "service";
+  itemId: string;
+  quantity: number;
+}
+
+interface CreateDocumentInput {
+  clientId: string;
+  items: CreateDocumentItemInput[];
+  vatApplied: boolean;
+  taxPercentage: number;
+  discountValue?: number;
+  dueDate?: string;
+}
+
+interface CreatePaymentInput {
+  method: "numerario" | "cheque";
+  chequeNumber?: string;
+  allocations: Array<{ documentId: string; amount: number }>;
+}
 
 interface DataContextType {
-  // Users
+  loading: boolean;
+
   users: User[];
-  addUser: (user: Omit<User, "id" | "createdAt">) => void;
-  updateUser: (id: string, user: Partial<User>) => void;
-  deleteUser: (id: string) => void;
-  
-  // Clients
+  addUser: (user: { name: string; email: string; password: string; role: "admin" | "operador" }) => Promise<User>;
+  updateUser: (id: string, user: Partial<{ name: string; email: string; password: string; role: "admin" | "operador" }>) => Promise<User>;
+  deleteUser: (id: string) => Promise<void>;
+
   clients: Client[];
-  addClient: (client: Omit<Client, "id" | "createdAt">) => void;
-  updateClient: (id: string, client: Partial<Client>) => void;
-  deleteClient: (id: string) => void;
-  
-  // Categories
+  addClient: (client: Omit<Client, "id" | "createdAt">) => Promise<Client>;
+  updateClient: (id: string, client: Partial<Omit<Client, "id" | "createdAt">>) => Promise<Client>;
+  deleteClient: (id: string) => Promise<void>;
+
   categories: Category[];
-  addCategory: (category: Omit<Category, "id" | "createdAt">) => void;
-  updateCategory: (id: string, category: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
-  
-  // Products
+  addCategory: (category: Omit<Category, "id" | "createdAt">) => Promise<Category>;
+  updateCategory: (id: string, category: Partial<Omit<Category, "id" | "createdAt">>) => Promise<Category>;
+  deleteCategory: (id: string) => Promise<void>;
+
   products: Product[];
-  addProduct: (product: Omit<Product, "id" | "createdAt">) => void;
-  updateProduct: (id: string, product: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  updateStock: (id: string, quantity: number) => void;
-  
-  // Services
+  addProduct: (product: Omit<Product, "id" | "createdAt" | "category">) => Promise<Product>;
+  updateProduct: (id: string, product: Partial<Omit<Product, "id" | "createdAt" | "category">>) => Promise<Product>;
+  deleteProduct: (id: string) => Promise<void>;
+
   services: Service[];
-  addService: (service: Omit<Service, "id" | "createdAt">) => void;
-  updateService: (id: string, service: Partial<Service>) => void;
-  deleteService: (id: string) => void;
-  
-  // Taxes
+  addService: (service: Omit<Service, "id" | "createdAt" | "category">) => Promise<Service>;
+  updateService: (id: string, service: Partial<Omit<Service, "id" | "createdAt" | "category">>) => Promise<Service>;
+  deleteService: (id: string) => Promise<void>;
+
   taxes: Tax[];
-  addTax: (tax: Omit<Tax, "id">) => void;
-  updateTax: (id: string, tax: Partial<Tax>) => void;
-  deleteTax: (id: string) => void;
-  
-  // Documents (Invoices & Quotations)
-  documents: Document[];
-  addInvoice: (invoice: Omit<Invoice, "id">) => void;
-  addQuotation: (quotation: Omit<Quotation, "id">) => void;
-  updateInvoice: (id: string, invoice: Partial<Invoice>) => void;
-  updateQuotation: (id: string, quotation: Partial<Quotation>) => void;
-  deleteDocument: (id: string) => void;
-  convertQuotationToInvoice: (quotationId: string) => void;
-  
-  // Getters
-  getInvoices: () => Invoice[];
-  getQuotations: () => Quotation[];
-  getDocument: (id: string) => Document | undefined;
+  addTax: (tax: Omit<Tax, "id">) => Promise<Tax>;
+  updateTax: (id: string, tax: Partial<Omit<Tax, "id">>) => Promise<Tax>;
+  deleteTax: (id: string) => Promise<void>;
+
+  documents: AppDocument[];
+  createInvoice: (input: CreateDocumentInput) => Promise<AppDocument>;
+  createQuotation: (input: CreateDocumentInput) => Promise<AppDocument>;
+  convertQuotationToInvoice: (quotationId: string) => Promise<AppDocument>;
+  updateDocumentStatus: (id: string, status: DocumentStatus) => Promise<AppDocument>;
+  fetchDocument: (id: string) => Promise<AppDocument>;
+  getInvoices: () => AppDocument[];
+  getQuotations: () => AppDocument[];
+
+  payments: Payment[];
+  registerPayment: (input: CreatePaymentInput) => Promise<Payment>;
+  fetchPayment: (id: string) => Promise<Payment>;
+
+  refreshAll: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [clients, setClients] = useState<Client[]>(mockClients);
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [services, setServices] = useState<Service[]>(mockServices);
-  const [taxes, setTaxes] = useState<Tax[]>(mockTaxes);
-  const [documents, setDocuments] = useState<Document[]>([...mockInvoices, ...mockQuotations]);
+  const { user } = useAuth();
 
-  const generateId = () => Math.random().toString(36).substring(7);
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [taxes, setTaxes] = useState<Tax[]>([]);
+  const [documents, setDocuments] = useState<AppDocument[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
 
-  // Users
-  const addUser = (userData: Omit<User, "id" | "createdAt">) => {
-    const newUser: User = {
-      ...userData,
-      id: generateId(),
-      createdAt: new Date().toISOString()
-    };
-    setUsers(prev => [...prev, newUser]);
+  const refreshClients = useCallback(async () => setClients(await api.get<Client[]>("/clients")), []);
+  const refreshCategories = useCallback(
+    async () => setCategories((await api.get<RawCategory[]>("/categories")).map(mapCategory)),
+    []
+  );
+  const refreshProducts = useCallback(
+    async () => setProducts((await api.get<RawProduct[]>("/products")).map(mapProduct)),
+    []
+  );
+  const refreshServices = useCallback(
+    async () => setServices((await api.get<RawService[]>("/services")).map(mapService)),
+    []
+  );
+  const refreshTaxes = useCallback(async () => setTaxes(await api.get<Tax[]>("/taxes")), []);
+  const refreshDocuments = useCallback(
+    async () => setDocuments((await api.get<any[]>("/documents")).map(mapDocument)),
+    []
+  );
+  const refreshPayments = useCallback(async () => setPayments(await api.get<Payment[]>("/payments")), []);
+  const refreshUsers = useCallback(async () => setUsers(await api.get<User[]>("/users")), []);
+
+  const refreshAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const tasks = [
+        refreshClients(),
+        refreshCategories(),
+        refreshProducts(),
+        refreshServices(),
+        refreshTaxes(),
+        refreshDocuments(),
+        refreshPayments(),
+      ];
+      if (user?.role === "admin") tasks.push(refreshUsers());
+      await Promise.allSettled(tasks);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    user?.role,
+    refreshClients,
+    refreshCategories,
+    refreshProducts,
+    refreshServices,
+    refreshTaxes,
+    refreshDocuments,
+    refreshPayments,
+    refreshUsers,
+  ]);
+
+  useEffect(() => {
+    if (user) {
+      refreshAll();
+    } else {
+      setUsers([]);
+      setClients([]);
+      setCategories([]);
+      setProducts([]);
+      setServices([]);
+      setTaxes([]);
+      setDocuments([]);
+      setPayments([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // ---- Users ----
+  const addUser: DataContextType["addUser"] = async (data) => {
+    const created = await api.post<User>("/users", data);
+    await refreshUsers();
+    return created;
+  };
+  const updateUser: DataContextType["updateUser"] = async (id, data) => {
+    const updated = await api.patch<User>(`/users/${id}`, data);
+    await refreshUsers();
+    return updated;
+  };
+  const deleteUser = async (id: string) => {
+    await api.delete(`/users/${id}`);
+    await refreshUsers();
   };
 
-  const updateUser = (id: string, userData: Partial<User>) => {
-    setUsers(prev => prev.map(user => user.id === id ? { ...user, ...userData } : user));
+  // ---- Clients ----
+  const addClient: DataContextType["addClient"] = async (data) => {
+    const created = await api.post<Client>("/clients", data);
+    await refreshClients();
+    return created;
+  };
+  const updateClient: DataContextType["updateClient"] = async (id, data) => {
+    const updated = await api.patch<Client>(`/clients/${id}`, data);
+    await refreshClients();
+    return updated;
+  };
+  const deleteClient = async (id: string) => {
+    await api.delete(`/clients/${id}`);
+    await refreshClients();
   };
 
-  const deleteUser = (id: string) => {
-    setUsers(prev => prev.filter(user => user.id !== id));
+  // ---- Categories ----
+  const addCategory: DataContextType["addCategory"] = async (data) => {
+    const created = mapCategory(await api.post<RawCategory>("/categories", data));
+    await refreshCategories();
+    return created;
+  };
+  const updateCategory: DataContextType["updateCategory"] = async (id, data) => {
+    const updated = mapCategory(await api.patch<RawCategory>(`/categories/${id}`, data));
+    await refreshCategories();
+    return updated;
+  };
+  const deleteCategory = async (id: string) => {
+    await api.delete(`/categories/${id}`);
+    await refreshCategories();
   };
 
-  // Clients
-  const addClient = (clientData: Omit<Client, "id" | "createdAt">) => {
-    const newClient: Client = {
-      ...clientData,
-      id: generateId(),
-      createdAt: new Date().toISOString()
-    };
-    setClients(prev => [...prev, newClient]);
+  // ---- Products ----
+  const addProduct: DataContextType["addProduct"] = async (data) => {
+    const created = mapProduct(
+      await api.post<RawProduct>("/products", {
+        categoryId: data.categoryId,
+        name: data.name,
+        description: data.description,
+        price: data.price,
+        stockQty: data.stock,
+        lowStockThreshold: data.lowStockThreshold,
+        unit: data.unit,
+      })
+    );
+    await refreshProducts();
+    return created;
+  };
+  const updateProduct: DataContextType["updateProduct"] = async (id, data) => {
+    const payload: Record<string, unknown> = { ...data };
+    if (data.stock !== undefined) {
+      payload.stockQty = data.stock;
+      delete payload.stock;
+    }
+    const updated = mapProduct(await api.patch<RawProduct>(`/products/${id}`, payload));
+    await refreshProducts();
+    return updated;
+  };
+  const deleteProduct = async (id: string) => {
+    await api.delete(`/products/${id}`);
+    await refreshProducts();
   };
 
-  const updateClient = (id: string, clientData: Partial<Client>) => {
-    setClients(prev => prev.map(client => client.id === id ? { ...client, ...clientData } : client));
+  // ---- Services ----
+  const addService: DataContextType["addService"] = async (data) => {
+    const created = mapService(await api.post<RawService>("/services", data));
+    await refreshServices();
+    return created;
+  };
+  const updateService: DataContextType["updateService"] = async (id, data) => {
+    const updated = mapService(await api.patch<RawService>(`/services/${id}`, data));
+    await refreshServices();
+    return updated;
+  };
+  const deleteService = async (id: string) => {
+    await api.delete(`/services/${id}`);
+    await refreshServices();
   };
 
-  const deleteClient = (id: string) => {
-    setClients(prev => prev.filter(client => client.id !== id));
+  // ---- Taxes ----
+  const addTax: DataContextType["addTax"] = async (data) => {
+    const created = await api.post<Tax>("/taxes", data);
+    await refreshTaxes();
+    return created;
+  };
+  const updateTax: DataContextType["updateTax"] = async (id, data) => {
+    const updated = await api.patch<Tax>(`/taxes/${id}`, data);
+    await refreshTaxes();
+    return updated;
+  };
+  const deleteTax = async (id: string) => {
+    await api.delete(`/taxes/${id}`);
+    await refreshTaxes();
   };
 
-  // Categories
-  const addCategory = (categoryData: Omit<Category, "id" | "createdAt">) => {
-    const newCategory: Category = {
-      ...categoryData,
-      id: generateId(),
-      createdAt: new Date().toISOString()
-    };
-    setCategories(prev => [...prev, newCategory]);
+  // ---- Documents ----
+  const createInvoice = async (input: CreateDocumentInput) => {
+    const created = mapDocument(
+      await api.post("/documents", { type: "FACT", status: "issued", discountValue: 0, ...input })
+    );
+    await Promise.allSettled([refreshDocuments(), refreshProducts()]);
+    return created;
   };
-
-  const updateCategory = (id: string, categoryData: Partial<Category>) => {
-    setCategories(prev => prev.map(cat => cat.id === id ? { ...cat, ...categoryData } : cat));
+  const createQuotation = async (input: CreateDocumentInput) => {
+    const created = mapDocument(
+      await api.post("/documents", { type: "COT", status: "issued", discountValue: 0, ...input })
+    );
+    await refreshDocuments();
+    return created;
   };
-
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(cat => cat.id !== id));
+  const convertQuotationToInvoice = async (quotationId: string) => {
+    const created = mapDocument(await api.post(`/documents/${quotationId}/convert-to-invoice`));
+    await Promise.allSettled([refreshDocuments(), refreshProducts()]);
+    return created;
   };
-
-  // Products
-  const addProduct = (productData: Omit<Product, "id" | "createdAt">) => {
-    const category = categories.find(c => c.id === productData.categoryId);
-    const newProduct: Product = {
-      ...productData,
-      category: category?.name || "",
-      id: generateId(),
-      createdAt: new Date().toISOString()
-    };
-    setProducts(prev => [...prev, newProduct]);
+  const updateDocumentStatus = async (id: string, status: DocumentStatus) => {
+    const updated = mapDocument(await api.patch(`/documents/${id}/status`, { status }));
+    await Promise.allSettled([refreshDocuments(), refreshProducts()]);
+    return updated;
   };
+  const fetchDocument = async (id: string) => mapDocument(await api.get(`/documents/${id}`));
+  const getInvoices = () => documents.filter((d) => d.type === "FACT");
+  const getQuotations = () => documents.filter((d) => d.type === "COT");
 
-  const updateProduct = (id: string, productData: Partial<Product>) => {
-    setProducts(prev => prev.map(product => {
-      if (product.id === id) {
-        const updatedProduct = { ...product, ...productData };
-        if (productData.categoryId) {
-          const category = categories.find(c => c.id === productData.categoryId);
-          updatedProduct.category = category?.name || "";
-        }
-        return updatedProduct;
-      }
-      return product;
-    }));
+  // ---- Payments ----
+  const registerPayment = async (input: CreatePaymentInput) => {
+    const created = await api.post<Payment>("/payments", input);
+    await Promise.allSettled([refreshPayments(), refreshDocuments()]);
+    return created;
   };
-
-  const deleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(product => product.id !== id));
-  };
-
-  const updateStock = (id: string, quantity: number) => {
-    setProducts(prev => prev.map(product => 
-      product.id === id ? { ...product, stock: product.stock - quantity } : product
-    ));
-  };
-
-  // Services
-  const addService = (serviceData: Omit<Service, "id" | "createdAt">) => {
-    const newService: Service = {
-      ...serviceData,
-      id: generateId(),
-      createdAt: new Date().toISOString()
-    };
-    setServices(prev => [...prev, newService]);
-  };
-
-  const updateService = (id: string, serviceData: Partial<Service>) => {
-    setServices(prev => prev.map(service => service.id === id ? { ...service, ...serviceData } : service));
-  };
-
-  const deleteService = (id: string) => {
-    setServices(prev => prev.filter(service => service.id !== id));
-  };
-
-  // Taxes
-  const addTax = (taxData: Omit<Tax, "id">) => {
-    const newTax: Tax = {
-      ...taxData,
-      id: generateId()
-    };
-    setTaxes(prev => [...prev, newTax]);
-  };
-
-  const updateTax = (id: string, taxData: Partial<Tax>) => {
-    setTaxes(prev => prev.map(tax => tax.id === id ? { ...tax, ...taxData } : tax));
-  };
-
-  const deleteTax = (id: string) => {
-    setTaxes(prev => prev.filter(tax => tax.id !== id));
-  };
-
-  // Documents
-  const addInvoice = (invoiceData: Omit<Invoice, "id">) => {
-    const number = String(documents.filter(d => d.type === "invoice").length + 1).padStart(4, "0");
-    const newInvoice: Invoice = {
-      ...invoiceData,
-      id: `FACT-${number}/25`
-    };
-    setDocuments(prev => [...prev, newInvoice]);
-  };
-
-  const addQuotation = (quotationData: Omit<Quotation, "id">) => {
-    const number = String(documents.filter(d => d.type === "quotation").length + 1).padStart(4, "0");
-    const newQuotation: Quotation = {
-      ...quotationData,
-      id: `COT-${number}/25`
-    };
-    setDocuments(prev => [...prev, newQuotation]);
-  };
-
-  const updateInvoice = (id: string, invoiceData: Partial<Invoice>) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === id && doc.type === "invoice" ? { ...doc, ...invoiceData } : doc
-    ));
-  };
-
-  const updateQuotation = (id: string, quotationData: Partial<Quotation>) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === id && doc.type === "quotation" ? { ...doc, ...quotationData } : doc
-    ));
-  };
-
-  const deleteDocument = (id: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== id));
-  };
-
-  const convertQuotationToInvoice = (quotationId: string) => {
-    const quotation = documents.find(d => d.id === quotationId && d.type === "quotation") as Quotation;
-    if (!quotation) return;
-
-    const invoiceNumber = String(documents.filter(d => d.type === "invoice").length + 1).padStart(4, "0");
-    const newInvoice: Invoice = {
-      id: `FACT-${invoiceNumber}/25`,
-      clientId: quotation.clientId,
-      clientName: quotation.clientName,
-      date: quotation.date,
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: "Pendente",
-      items: quotation.items,
-      subtotal: quotation.subtotal,
-      taxAmount: quotation.taxAmount,
-      total: quotation.total,
-      type: "invoice"
-    };
-
-    setDocuments(prev => [
-      ...prev.map(doc => doc.id === quotationId && doc.type === "quotation" ? { ...doc, status: "Aceite" as const } : doc),
-      newInvoice
-    ]);
-
-    // Update stock for products
-    quotation.items.forEach(item => {
-      if (item.type === "product") {
-        updateStock(item.itemId, item.quantity);
-      }
-    });
-  };
-
-  // Getters
-  const getInvoices = (): Invoice[] => documents.filter(d => d.type === "invoice") as Invoice[];
-  const getQuotations = (): Quotation[] => documents.filter(d => d.type === "quotation") as Quotation[];
-  const getDocument = (id: string): Document | undefined => documents.find(d => d.id === id);
+  const fetchPayment = async (id: string) => api.get<Payment>(`/payments/${id}`);
 
   return (
-    <DataContext.Provider value={{
-      users, addUser, updateUser, deleteUser,
-      clients, addClient, updateClient, deleteClient,
-      categories, addCategory, updateCategory, deleteCategory,
-      products, addProduct, updateProduct, deleteProduct, updateStock,
-      services, addService, updateService, deleteService,
-      taxes, addTax, updateTax, deleteTax,
-      documents, addInvoice, addQuotation, updateInvoice, updateQuotation, deleteDocument, convertQuotationToInvoice,
-      getInvoices, getQuotations, getDocument
-    }}>
+    <DataContext.Provider
+      value={{
+        loading,
+        users,
+        addUser,
+        updateUser,
+        deleteUser,
+        clients,
+        addClient,
+        updateClient,
+        deleteClient,
+        categories,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        products,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        services,
+        addService,
+        updateService,
+        deleteService,
+        taxes,
+        addTax,
+        updateTax,
+        deleteTax,
+        documents,
+        createInvoice,
+        createQuotation,
+        convertQuotationToInvoice,
+        updateDocumentStatus,
+        fetchDocument,
+        getInvoices,
+        getQuotations,
+        payments,
+        registerPayment,
+        fetchPayment,
+        refreshAll,
+      }}
+    >
       {children}
     </DataContext.Provider>
   );

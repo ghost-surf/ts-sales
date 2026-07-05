@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Calculator } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function TaxesPage() {
   const { taxes, addTax, updateTax, deleteTax } = useData();
@@ -25,17 +28,17 @@ export default function TaxesPage() {
     e.preventDefault();
     try {
       if (editingTax) {
-        updateTax(editingTax.id, {
+        await updateTax(editingTax.id, {
           name: formData.name,
           percentage: parseFloat(formData.percentage)
         });
-        
+
         toast({
           title: "Imposto atualizado!",
           description: "O imposto foi atualizado com sucesso."
         });
       } else {
-        addTax({
+        await addTax({
           name: formData.name,
           percentage: parseFloat(formData.percentage)
         });
@@ -48,10 +51,10 @@ export default function TaxesPage() {
 
       resetForm();
       setDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -68,16 +71,16 @@ export default function TaxesPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      deleteTax(id);
-      
+      await deleteTax(id);
+
       toast({
         title: "Imposto eliminado!",
         description: "O imposto foi eliminado com sucesso."
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao eliminar imposto",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -93,6 +96,8 @@ export default function TaxesPage() {
     resetForm();
   };
 
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(taxes);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -104,7 +109,7 @@ export default function TaxesPage() {
             </p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -162,7 +167,7 @@ export default function TaxesPage() {
               <span>Lista de Impostos</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className={taxes.length === 0 ? undefined : "p-0"}>
             {taxes.length === 0 ? (
               <div className="text-center py-8">
                 <Calculator className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -172,6 +177,7 @@ export default function TaxesPage() {
                 </p>
               </div>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -181,7 +187,7 @@ export default function TaxesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {taxes.map((tax) => (
+                  {pageItems.map((tax) => (
                     <TableRow key={tax.id}>
                       <TableCell className="font-medium">{tax.name}</TableCell>
                       <TableCell>

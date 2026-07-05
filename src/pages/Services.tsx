@@ -3,47 +3,52 @@ import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Wrench } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { ApiError } from "@/lib/api";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Services() {
-  const { services, addService, updateService, deleteService } = useData();
+  const { services, categories, addService, updateService, deleteService } = useData();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
     price: "",
-    description: ""
+    categoryId: "",
   });
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.categoryId) return;
+
     try {
       if (editingService) {
-        updateService(editingService.id, {
+        await updateService(editingService.id, {
           name: formData.name,
           price: parseFloat(formData.price),
-          description: formData.description
+          categoryId: formData.categoryId,
         });
-        
+
         toast({
           title: "Serviço atualizado!",
           description: "O serviço foi atualizado com sucesso."
         });
       } else {
-        addService({
+        await addService({
           name: formData.name,
           price: parseFloat(formData.price),
-          description: formData.description
+          categoryId: formData.categoryId,
         });
-        
+
         toast({
           title: "Serviço criado!",
           description: "O novo serviço foi criado com sucesso."
@@ -52,10 +57,10 @@ export default function Services() {
 
       resetForm();
       setDialogOpen(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
@@ -66,30 +71,30 @@ export default function Services() {
     setFormData({
       name: service.name,
       price: service.price.toString(),
-      description: service.description || ""
+      categoryId: service.categoryId,
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      deleteService(id);
-      
+      await deleteService(id);
+
       toast({
         title: "Serviço eliminado!",
         description: "O serviço foi eliminado com sucesso."
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Erro ao eliminar serviço",
-        description: error.message,
+        description: error instanceof ApiError ? error.message : "Erro inesperado",
         variant: "destructive"
       });
     }
   };
 
   const resetForm = () => {
-    setFormData({ name: "", price: "", description: "" });
+    setFormData({ name: "", price: "", categoryId: "" });
     setEditingService(null);
   };
 
@@ -97,6 +102,8 @@ export default function Services() {
     setDialogOpen(false);
     resetForm();
   };
+
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(services);
 
   return (
     <Layout>
@@ -109,7 +116,7 @@ export default function Services() {
             </p>
           </div>
           
-          <Dialog open={dialogOpen} onOpenChange={handleDialogClose}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -134,6 +141,24 @@ export default function Services() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="category">Categoria</Label>
+                  <Select
+                    value={formData.categoryId}
+                    onValueChange={(value) => setFormData({...formData, categoryId: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="price">Preço Unitário (MTN)</Label>
                   <Input
                     id="price"
@@ -144,15 +169,6 @@ export default function Services() {
                     onChange={(e) => setFormData({...formData, price: e.target.value})}
                     placeholder="0.00"
                     required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Descrição Detalhada</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Descrição detalhada do serviço"
                   />
                 </div>
                 <div className="flex space-x-2">
@@ -175,7 +191,7 @@ export default function Services() {
               <span>Lista de Serviços</span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className={services.length === 0 ? undefined : "p-0"}>
             {services.length === 0 ? (
               <div className="text-center py-8">
                 <Wrench className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -185,25 +201,25 @@ export default function Services() {
                 </p>
               </div>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Serviço</TableHead>
+                    <TableHead>Categoria</TableHead>
                     <TableHead>Preço</TableHead>
                     <TableHead>Data de Criação</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {services.map((service) => (
+                  {pageItems.map((service) => (
                     <TableRow key={service.id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{service.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {service.description}
-                          </p>
-                        </div>
+                        <p className="font-medium">{service.name}</p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{service.category}</Badge>
                       </TableCell>
                       <TableCell className="font-mono">
                         {service.price.toFixed(2)} MTN
@@ -233,6 +249,15 @@ export default function Services() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>

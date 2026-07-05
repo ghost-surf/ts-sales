@@ -7,18 +7,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LogIn, UserPlus, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { ApiError } from "@/lib/api";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { login, register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+
   const [loginData, setLoginData] = useState({
     email: "",
     password: "",
   });
-  
+
   const [signupData, setSignupData] = useState({
     name: "",
     email: "",
@@ -33,17 +36,11 @@ export default function Auth() {
     setSuccess(null);
 
     try {
-      // Simulate authentication - in a real app you would validate credentials
-      if (loginData.email === "admin@hydrostock.com" && loginData.password === "admin123") {
-        setSuccess("Login realizado com sucesso!");
-        setTimeout(() => {
-          navigate("/");
-        }, 1000);
-      } else {
-        setError("Email ou palavra-passe incorretos");
-      }
+      await login(loginData.email, loginData.password);
+      setSuccess("Login realizado com sucesso!");
+      navigate("/");
     } catch (err) {
-      setError("Erro inesperado. Tente novamente.");
+      setError(err instanceof ApiError ? err.message : "Erro inesperado. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -68,20 +65,10 @@ export default function Auth() {
     }
 
     try {
-      setSuccess("Conta criada com sucesso! Pode fazer login agora.");
-      
-      // Switch to login tab
-      setTimeout(() => {
-        setSignupData({
-          name: "",
-          email: "",
-          password: "",
-          confirmPassword: "",
-        });
-        setSuccess(null);
-      }, 2000);
+      await register(signupData.name, signupData.email, signupData.password);
+      navigate("/");
     } catch (err) {
-      setError("Erro inesperado. Tente novamente.");
+      setError(err instanceof ApiError ? err.message : "Erro inesperado. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -133,7 +120,7 @@ export default function Auth() {
                       type="email"
                       placeholder="admin@hydrostock.com"
                       value={loginData.email}
-                      onChange={(e) => setLoginData({...loginData, email: e.target.value})}
+                      onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                       required
                     />
                   </div>
@@ -142,9 +129,8 @@ export default function Auth() {
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="admin123"
                       value={loginData.password}
-                      onChange={(e) => setLoginData({...loginData, password: e.target.value})}
+                      onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                       required
                     />
                   </div>
@@ -161,9 +147,6 @@ export default function Auth() {
                       </>
                     )}
                   </Button>
-                  <div className="text-xs text-muted-foreground text-center">
-                    Credenciais de teste: admin@hydrostock.com / admin123
-                  </div>
                 </form>
               </TabsContent>
 
@@ -176,7 +159,7 @@ export default function Auth() {
                       type="text"
                       placeholder="Seu nome completo"
                       value={signupData.name}
-                      onChange={(e) => setSignupData({...signupData, name: e.target.value})}
+                      onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
                       required
                     />
                   </div>
@@ -187,7 +170,7 @@ export default function Auth() {
                       type="email"
                       placeholder="seu@email.com"
                       value={signupData.email}
-                      onChange={(e) => setSignupData({...signupData, email: e.target.value})}
+                      onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
                       required
                     />
                   </div>
@@ -198,7 +181,7 @@ export default function Auth() {
                       type="password"
                       placeholder="••••••••"
                       value={signupData.password}
-                      onChange={(e) => setSignupData({...signupData, password: e.target.value})}
+                      onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
                       required
                     />
                   </div>
@@ -209,7 +192,7 @@ export default function Auth() {
                       type="password"
                       placeholder="••••••••"
                       value={signupData.confirmPassword}
-                      onChange={(e) => setSignupData({...signupData, confirmPassword: e.target.value})}
+                      onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
                       required
                     />
                   </div>
