@@ -12,6 +12,10 @@ import {
   Payment,
   UnitType,
   DocumentStatus,
+  CompanySettings,
+  StockMovement,
+  CreditNote,
+  PaymentMethod,
 } from "@/types";
 
 // ---- Raw API shapes -> frontend-friendly shapes -------------------------
@@ -97,6 +101,7 @@ function mapDocument(raw: any): AppDocument {
     paidAmount: raw.paidAmount ?? 0,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
+    creditNote: raw.creditNote ?? null,
   };
 }
 
@@ -118,7 +123,7 @@ interface CreateDocumentInput {
 }
 
 interface CreatePaymentInput {
-  method: "numerario" | "cheque";
+  method: PaymentMethod;
   chequeNumber?: string;
   allocations: Array<{ documentId: string; amount: number }>;
 }
@@ -169,6 +174,16 @@ interface DataContextType {
   registerPayment: (input: CreatePaymentInput) => Promise<Payment>;
   fetchPayment: (id: string) => Promise<Payment>;
 
+  companySettings: CompanySettings | null;
+  updateCompanySettings: (data: Partial<Omit<CompanySettings, "id" | "updatedAt">>) => Promise<CompanySettings>;
+
+  stockMovements: StockMovement[];
+  refreshStockMovements: () => Promise<void>;
+
+  creditNotes: CreditNote[];
+  createCreditNote: (documentId: string, reason?: string) => Promise<CreditNote>;
+  fetchCreditNote: (id: string) => Promise<CreditNote>;
+
   refreshAll: () => Promise<void>;
 }
 
@@ -186,6 +201,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [taxes, setTaxes] = useState<Tax[]>([]);
   const [documents, setDocuments] = useState<AppDocument[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
 
   const refreshClients = useCallback(async () => setClients(await api.get<Client[]>("/clients")), []);
   const refreshCategories = useCallback(
@@ -207,6 +225,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
   const refreshPayments = useCallback(async () => setPayments(await api.get<Payment[]>("/payments")), []);
   const refreshUsers = useCallback(async () => setUsers(await api.get<User[]>("/users")), []);
+  const refreshCompanySettings = useCallback(
+    async () => setCompanySettings(await api.get<CompanySettings>("/settings")),
+    []
+  );
+  const refreshStockMovements = useCallback(
+    async () => setStockMovements(await api.get<StockMovement[]>("/stock-movements")),
+    []
+  );
+  const refreshCreditNotes = useCallback(
+    async () => setCreditNotes(await api.get<CreditNote[]>("/credit-notes")),
+    []
+  );
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
@@ -219,8 +249,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         refreshTaxes(),
         refreshDocuments(),
         refreshPayments(),
+        refreshCompanySettings(),
+        refreshCreditNotes(),
       ];
-      if (user?.role === "admin") tasks.push(refreshUsers());
+      if (user?.role === "admin") {
+        tasks.push(refreshUsers());
+        tasks.push(refreshStockMovements());
+      }
       await Promise.allSettled(tasks);
     } finally {
       setLoading(false);
@@ -234,7 +269,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     refreshTaxes,
     refreshDocuments,
     refreshPayments,
+    refreshCompanySettings,
+    refreshCreditNotes,
     refreshUsers,
+    refreshStockMovements,
   ]);
 
   useEffect(() => {
@@ -249,6 +287,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setTaxes([]);
       setDocuments([]);
       setPayments([]);
+      setCompanySettings(null);
+      setStockMovements([]);
+      setCreditNotes([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
@@ -314,7 +355,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         unit: data.unit,
       })
     );
-    await refreshProducts();
+    await Promise.allSettled([refreshProducts(), refreshStockMovements()]);
     return created;
   };
   const updateProduct: DataContextType["updateProduct"] = async (id, data) => {
@@ -324,7 +365,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       delete payload.stock;
     }
     const updated = mapProduct(await api.patch<RawProduct>(`/products/${id}`, payload));
-    await refreshProducts();
+    await Promise.allSettled([refreshProducts(), refreshStockMovements()]);
     return updated;
   };
   const deleteProduct = async (id: string) => {
@@ -365,11 +406,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   // ---- Documents ----
+  const refreshStockSideEffects = () => {
+    const tasks = [refreshDocuments(), refreshProducts()];
+    if (user?.role === "admin") tasks.push(refreshStockMovements());
+    return Promise.allSettled(tasks);
+  };
+
   const createInvoice = async (input: CreateDocumentInput) => {
     const created = mapDocument(
       await api.post("/documents", { type: "FACT", status: "issued", discountValue: 0, ...input })
     );
-    await Promise.allSettled([refreshDocuments(), refreshProducts()]);
+    await refreshStockSideEffects();
     return created;
   };
   const createQuotation = async (input: CreateDocumentInput) => {
@@ -381,12 +428,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
   const convertQuotationToInvoice = async (quotationId: string) => {
     const created = mapDocument(await api.post(`/documents/${quotationId}/convert-to-invoice`));
-    await Promise.allSettled([refreshDocuments(), refreshProducts()]);
+    await refreshStockSideEffects();
     return created;
   };
   const updateDocumentStatus = async (id: string, status: DocumentStatus) => {
     const updated = mapDocument(await api.patch(`/documents/${id}/status`, { status }));
-    await Promise.allSettled([refreshDocuments(), refreshProducts()]);
+    await refreshStockSideEffects();
     return updated;
   };
   const fetchDocument = async (id: string) => mapDocument(await api.get(`/documents/${id}`));
@@ -400,6 +447,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return created;
   };
   const fetchPayment = async (id: string) => api.get<Payment>(`/payments/${id}`);
+
+  // ---- Credit notes ----
+  const createCreditNote = async (documentId: string, reason?: string) => {
+    const created = await api.post<CreditNote>("/credit-notes", { documentId, reason });
+    const tasks = [refreshDocuments(), refreshProducts(), refreshPayments(), refreshCreditNotes()];
+    if (user?.role === "admin") tasks.push(refreshStockMovements());
+    await Promise.allSettled(tasks);
+    return created;
+  };
+  const fetchCreditNote = async (id: string) => api.get<CreditNote>(`/credit-notes/${id}`);
+
+  // ---- Company settings ----
+  const updateCompanySettings: DataContextType["updateCompanySettings"] = async (data) => {
+    const updated = await api.patch<CompanySettings>("/settings", data);
+    setCompanySettings(updated);
+    return updated;
+  };
 
   return (
     <DataContext.Provider
@@ -440,6 +504,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         payments,
         registerPayment,
         fetchPayment,
+        companySettings,
+        updateCompanySettings,
+        stockMovements,
+        refreshStockMovements,
+        creditNotes,
+        createCreditNote,
+        fetchCreditNote,
         refreshAll,
       }}
     >

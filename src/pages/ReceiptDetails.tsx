@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
+import { paymentMethodLabel } from "@/lib/statusLabels";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { printAs } from "@/lib/printDocument";
+import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentBankDetails } from "@/components/DocumentBankDetails";
 import { Payment } from "@/types";
 
 export default function ReceiptDetails() {
@@ -76,7 +79,10 @@ export default function ReceiptDetails() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Recibo {receipt.receiptCode}</h1>
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+                {receipt.kind === "reversal" ? "Estorno" : "Recibo"} {receipt.receiptCode}
+                {receipt.kind === "reversal" && <Badge variant="destructive">Estorno</Badge>}
+              </h1>
               <p className="text-muted-foreground">
                 Data: {new Date(receipt.paymentDate).toLocaleDateString()}
               </p>
@@ -97,15 +103,7 @@ export default function ReceiptDetails() {
         <Card className="print:shadow-none print:border-none">
           <CardHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-2">HydroStock Pro</h2>
-                <p className="text-sm text-muted-foreground">
-                  Rua Principal, 456<br />
-                  Maputo, Moçambique<br />
-                  Tel: +258 21 123 456<br />
-                  NUIT: 987654321
-                </p>
-              </div>
+              <CompanyLetterhead />
               <div className="text-right">
                 <h3 className="text-lg font-semibold">Recibo passado a:</h3>
                 <p className="text-sm">{clientNames.join(", ") || "—"}</p>
@@ -125,7 +123,7 @@ export default function ReceiptDetails() {
                 <span className="font-medium">Forma de Pagamento:</span>
                 <div>
                   <Badge variant={receipt.method === "numerario" ? "default" : "secondary"}>
-                    {receipt.method === "numerario" ? "Numerário" : "Cheque"}
+                    {paymentMethodLabel(receipt.method)}
                   </Badge>
                   {receipt.chequeNumber && (
                     <span className="ml-2 text-muted-foreground">Nº {receipt.chequeNumber}</span>
@@ -168,15 +166,22 @@ export default function ReceiptDetails() {
 
             <div className="mt-6 space-y-2">
               <Separator />
-              <div className="flex justify-between text-lg font-semibold">
-                <span>Total Recebido:</span>
+              <div
+                className={`flex justify-between text-lg font-semibold ${
+                  receipt.kind === "reversal" ? "text-destructive" : ""
+                }`}
+              >
+                <span>{receipt.kind === "reversal" ? "Total Estornado:" : "Total Recebido:"}</span>
                 <span>{receipt.amount.toFixed(2)} MTN</span>
               </div>
             </div>
 
-            <div className="mt-8 text-sm text-muted-foreground">
-              <p>Obrigado pela sua preferência!</p>
-              <p>Este recibo foi gerado eletronicamente pelo sistema HydroStock Pro.</p>
+            <div className="mt-8">
+              <DocumentBankDetails />
+              <div className="text-sm text-muted-foreground">
+                <p>Obrigado pela sua preferência!</p>
+                <p>Este recibo foi gerado eletronicamente pelo sistema TS Sales.</p>
+              </div>
             </div>
           </CardContent>
         </Card>

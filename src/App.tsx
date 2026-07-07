@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DataProvider } from "@/contexts/DataContext";
+import { ConfirmProvider } from "@/contexts/ConfirmContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
@@ -17,17 +18,22 @@ import Users from "./pages/Users";
 import Receipts from "./pages/Receipts";
 import Reports from "./pages/Reports";
 import TaxesPage from "./pages/TaxesPage";
+import Settings from "./pages/Settings";
+import StockMovements from "./pages/StockMovements";
 import Invoices from "./pages/Invoices";
 import Quotations from "./pages/Quotations";
 import InvoiceDetails from "./pages/InvoiceDetails";
 import QuotationDetails from "./pages/QuotationDetails";
 import ReceiptDetails from "./pages/ReceiptDetails";
+import CreditNotes from "./pages/CreditNotes";
+import CreditNoteDetails from "./pages/CreditNoteDetails";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
   <BrowserRouter>
     <AuthProvider>
       <DataProvider>
+        <ConfirmProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -70,17 +76,43 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/receipts" element={<ProtectedRoute><Receipts /></ProtectedRoute>} />
             <Route path="/receipt/:id" element={<ProtectedRoute><ReceiptDetails /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/stock-movements"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <StockMovements />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
             <Route path="/quotations" element={<ProtectedRoute><Quotations /></ProtectedRoute>} />
             <Route path="/invoice/:id" element={<ProtectedRoute><InvoiceDetails /></ProtectedRoute>} />
             <Route path="/quotation/:id" element={<ProtectedRoute><QuotationDetails /></ProtectedRoute>} />
+            <Route path="/credit-notes" element={<ProtectedRoute><CreditNotes /></ProtectedRoute>} />
+            <Route path="/credit-note/:id" element={<ProtectedRoute><CreditNoteDetails /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
+        </ConfirmProvider>
       </DataProvider>
     </AuthProvider>
   </BrowserRouter>

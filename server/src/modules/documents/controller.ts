@@ -18,7 +18,7 @@ export async function create(req: Request, res: Response) {
 
 export async function updateStatus(req: Request, res: Response) {
   const data = updateStatusSchema.parse(req.body);
-  res.json(await service.updateStatus(req.params.id, data));
+  res.json(await service.updateStatus(req.params.id, req.user!.id, data));
 }
 
 export async function convertToInvoice(req: Request, res: Response) {

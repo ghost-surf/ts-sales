@@ -10,6 +10,8 @@ import { Receipt, Search, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { DisplayStatus } from "@/types";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Invoices() {
   const { getInvoices } = useData();
@@ -25,6 +27,8 @@ export default function Invoices() {
     const matchesStatus = statusFilter === "all" || invoice.displayStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filtered);
 
   const totalInvoiced = invoices.reduce((sum, i) => sum + i.total, 0);
   const totalPaid = invoices.reduce((sum, i) => sum + i.paidAmount, 0);
@@ -100,7 +104,7 @@ export default function Invoices() {
                   <SelectItem value="issued">Pendente</SelectItem>
                   <SelectItem value="paid">Paga</SelectItem>
                   <SelectItem value="overdue">Vencida</SelectItem>
-                  <SelectItem value="canceled">Cancelada</SelectItem>
+                  <SelectItem value="canceled">Anulada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -127,7 +131,7 @@ export default function Invoices() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((invoice) => (
+                  {pageItems.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell className="font-mono font-medium">{invoice.code}</TableCell>
                       <TableCell>{invoice.clientName}</TableCell>
@@ -148,6 +152,14 @@ export default function Invoices() {
                 </TableBody>
               </Table>
             )}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </CardContent>
         </Card>
       </div>

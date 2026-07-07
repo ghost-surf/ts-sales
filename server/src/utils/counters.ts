@@ -4,6 +4,8 @@ const PREFIX: Record<CounterType, string> = {
   FACT: "FACT",
   COT: "COT",
   REC: "REC",
+  NC: "NC",
+  EST: "EST",
 };
 
 export async function nextDocumentCode(

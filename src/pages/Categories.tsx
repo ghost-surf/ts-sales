@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
@@ -24,9 +25,17 @@ export default function Categories() {
     unit: "pcs" as "metros" | "pcs",
   });
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const ok = await confirm({
+      title: editingCategory ? "Atualizar categoria?" : "Criar categoria?",
+      confirmLabel: editingCategory ? "Atualizar" : "Criar",
+    });
+    if (!ok) return;
+
     try {
       if (editingCategory) {
         await updateCategory(editingCategory.id, {
@@ -71,6 +80,14 @@ export default function Categories() {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar categoria?",
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Eliminar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await deleteCategory(id);
 

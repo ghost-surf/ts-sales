@@ -8,27 +8,34 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Printer, Download, Loader2, CreditCard } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Printer, Download, Loader2, CreditCard, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel } from "@/lib/statusLabels";
 import { ApiError } from "@/lib/api";
 import { printAs } from "@/lib/printDocument";
-import { AppDocument } from "@/types";
+import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentBankDetails } from "@/components/DocumentBankDetails";
+import { AppDocument, PaymentMethod } from "@/types";
 
 export default function InvoiceDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { fetchDocument, clients, registerPayment } = useData();
+  const { fetchDocument, clients, registerPayment, createCreditNote } = useData();
   const [invoice, setInvoice] = useState<AppDocument | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [method, setMethod] = useState<"numerario" | "cheque">("numerario");
+  const [method, setMethod] = useState<PaymentMethod>("numerario");
   const [chequeNumber, setChequeNumber] = useState("");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const [creditNoteDialogOpen, setCreditNoteDialogOpen] = useState(false);
+  const [creditNoteReason, setCreditNoteReason] = useState("");
+  const [issuingCreditNote, setIssuingCreditNote] = useState(false);
 
   const loadInvoice = () => {
     if (!id) return;
@@ -67,6 +74,8 @@ export default function InvoiceDetails() {
   const client = clients.find(c => c.id === invoice.clientId);
   const remaining = Math.max(invoice.total - invoice.paidAmount, 0);
   const canRegisterPayment = invoice.status !== "paid" && invoice.status !== "canceled" && remaining > 0.01;
+  const canIssueCreditNote =
+    (invoice.status === "issued" || invoice.status === "paid") && !invoice.creditNote;
 
   const handlePrint = () => {
     printAs(`Fatura ${invoice.code} - ${invoice.clientName}`);
@@ -126,6 +135,27 @@ export default function InvoiceDetails() {
     }
   };
 
+  const handleIssueCreditNote = async () => {
+    setIssuingCreditNote(true);
+    try {
+      const creditNote = await createCreditNote(invoice.id, creditNoteReason.trim() || undefined);
+      setCreditNoteDialogOpen(false);
+      toast({
+        title: "Nota de Crédito emitida!",
+        description: `${creditNote.code} anulou a fatura ${invoice.code}. Stock e caixa foram repostos.`,
+      });
+      navigate(`/credit-note/${creditNote.id}`);
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof ApiError ? error.message : "Erro ao emitir Nota de Crédito",
+        variant: "destructive",
+      });
+    } finally {
+      setIssuingCreditNote(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -153,6 +183,66 @@ export default function InvoiceDetails() {
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
             </Button>
+            {invoice.creditNote ? (
+              <Link to={`/credit-note/${invoice.creditNote.id}`}>
+                <Button variant="outline" className="text-destructive border-destructive/40">
+                  <Ban className="h-4 w-4 mr-2" />
+                  Ver Nota de Crédito {invoice.creditNote.code}
+                </Button>
+              </Link>
+            ) : (
+              canIssueCreditNote && (
+                <Dialog
+                  open={creditNoteDialogOpen}
+                  onOpenChange={(open) => {
+                    setCreditNoteDialogOpen(open);
+                    if (open) setCreditNoteReason("");
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Ban className="h-4 w-4 mr-2" />
+                      Emitir Nota de Crédito
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Emitir Nota de Crédito — {invoice.code}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Esta ação anula integralmente a fatura {invoice.code}. O stock vendido será reposto e,
+                        {invoice.paidAmount > 0
+                          ? " o valor já recebido será estornado do caixa."
+                          : " caso ainda não haja pagamentos, nenhum estorno de caixa será necessário."}
+                        {" "}Não é possível anular apenas parte da fatura.
+                      </p>
+                      <div>
+                        <Label htmlFor="creditNoteReason">Motivo (opcional)</Label>
+                        <Textarea
+                          id="creditNoteReason"
+                          value={creditNoteReason}
+                          onChange={(e) => setCreditNoteReason(e.target.value)}
+                          placeholder="Ex: Produto devolvido pelo cliente"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="destructive"
+                          onClick={handleIssueCreditNote}
+                          disabled={issuingCreditNote}
+                        >
+                          {issuingCreditNote ? "A emitir..." : "Confirmar Anulação"}
+                        </Button>
+                        <Button variant="outline" onClick={() => setCreditNoteDialogOpen(false)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )
+            )}
             {canRegisterPayment && (
               <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
                 <DialogTrigger asChild>
@@ -171,13 +261,14 @@ export default function InvoiceDetails() {
                     </p>
                     <div>
                       <Label htmlFor="method">Forma de Pagamento</Label>
-                      <Select value={method} onValueChange={(v: "numerario" | "cheque") => setMethod(v)}>
+                      <Select value={method} onValueChange={(v: PaymentMethod) => setMethod(v)}>
                         <SelectTrigger id="method">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="numerario">Numerário</SelectItem>
                           <SelectItem value="cheque">Cheque</SelectItem>
+                          <SelectItem value="transferencia">Transferência</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -201,6 +292,8 @@ export default function InvoiceDetails() {
                         min="0"
                         max={remaining}
                         value={amount}
+                        disabled
+                        readOnly
                         onChange={(e) => setAmount(e.target.value)}
                       />
                     </div>
@@ -223,15 +316,7 @@ export default function InvoiceDetails() {
         <Card className="print:shadow-none print:border-none">
           <CardHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-2">HydroStock Pro</h2>
-                <p className="text-sm text-muted-foreground">
-                  Rua Principal, 456<br />
-                  Maputo, Moçambique<br />
-                  Tel: +258 21 123 456<br />
-                  NUIT: 987654321
-                </p>
-              </div>
+              <CompanyLetterhead />
               <div className="text-right">
                 <h3 className="text-lg font-semibold">Faturar a:</h3>
                 <p className="text-sm">
@@ -262,6 +347,8 @@ export default function InvoiceDetails() {
                   className={`px-2 py-1 rounded-full text-xs ${
                     invoice.displayStatus === "paid"
                       ? "bg-success/10 text-success"
+                      : invoice.displayStatus === "canceled"
+                      ? "bg-destructive/10 text-destructive"
                       : "bg-warning/10 text-warning"
                   }`}
                 >
@@ -332,9 +419,12 @@ export default function InvoiceDetails() {
               )}
             </div>
 
-            <div className="mt-8 text-sm text-muted-foreground">
-              <p>Obrigado pela sua preferência!</p>
-              <p>Esta fatura foi gerada eletronicamente pelo sistema HydroStock Pro.</p>
+            <div className="mt-8">
+              <DocumentBankDetails />
+              <div className="text-sm text-muted-foreground">
+                <p>Obrigado pela sua preferência!</p>
+                <p>Esta fatura foi gerada eletronicamente pelo sistema TS Sales.</p>
+              </div>
             </div>
           </CardContent>
         </Card>

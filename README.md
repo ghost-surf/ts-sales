@@ -1,4 +1,4 @@
-# HydroStock Pro
+# TS Sales
 
 Sistema de gestão de stock, vendas e faturação. Frontend em React + Vite + TypeScript
 (shadcn-ui + Tailwind), com um backend Node.js próprio (Express + Prisma + MySQL) para
@@ -32,8 +32,8 @@ npm run dev               # sobe a API em http://localhost:4000
 
 Credenciais criadas pelo seed (definidas em `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` no `.env`):
 
-- Email: `admin@hydrostock.com`
-- Palavra-passe: `admin123`
+- Email: `admin@carecatech.co.mz`
+- Palavra-passe: `Admin1234`
 
 `CORS_ORIGIN` no `.env` do backend tem de bater com o URL onde o frontend corre
 (por omissão o Vite deste projeto usa `http://localhost:8080`, configurado em `vite.config.ts`).

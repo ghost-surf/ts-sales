@@ -96,7 +96,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">
-            Visão geral do sistema de gestão HydroStock Pro
+            Visão geral do sistema de gestão TS Sales
           </p>
         </div>
 

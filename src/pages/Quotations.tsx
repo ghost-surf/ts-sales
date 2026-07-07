@@ -10,6 +10,8 @@ import { Search, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { DisplayStatus } from "@/types";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Quotations() {
   const { getQuotations } = useData();
@@ -25,6 +27,8 @@ export default function Quotations() {
     const matchesStatus = statusFilter === "all" || quotation.displayStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filtered);
 
   return (
     <Layout>
@@ -114,7 +118,7 @@ export default function Quotations() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((quotation) => (
+                  {pageItems.map((quotation) => (
                     <TableRow key={quotation.id}>
                       <TableCell className="font-mono font-medium">{quotation.code}</TableCell>
                       <TableCell>{quotation.clientName}</TableCell>
@@ -135,6 +139,14 @@ export default function Quotations() {
                 </TableBody>
               </Table>
             )}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </CardContent>
         </Card>
       </div>

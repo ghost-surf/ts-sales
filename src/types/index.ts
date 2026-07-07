@@ -91,6 +91,7 @@ export interface AppDocument {
   paidAmount: number;
   createdAt: string;
   updatedAt: string;
+  creditNote?: { id: string; code: string } | null;
 }
 
 export interface PaymentAllocation {
@@ -99,14 +100,68 @@ export interface PaymentAllocation {
   document?: { id: string; code: string; type: DocumentType; total: number; clientId: string };
 }
 
+export type PaymentMethod = "numerario" | "cheque" | "transferencia";
+
 export interface Payment {
   id: string;
   receiptCode: string;
   paymentDate: string;
-  method: "numerario" | "cheque";
+  method: PaymentMethod;
   chequeNumber?: string | null;
   amount: number;
+  kind: "payment" | "reversal";
   operatorId: string;
   operator?: { id: string; name: string; email: string };
   documents: PaymentAllocation[];
+}
+
+export interface CompanySettings {
+  id: string;
+  name: string;
+  address?: string | null;
+  email?: string | null;
+  nuit?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  logo?: string | null;
+  bankName?: string | null;
+  bankAccountHolder?: string | null;
+  bankIban?: string | null;
+  updatedAt: string;
+}
+
+export interface CreditNote {
+  id: string;
+  code: string;
+  documentId: string;
+  operatorId: string;
+  total: number;
+  reason?: string | null;
+  createdAt: string;
+  operator?: { id: string; name: string; email: string };
+  document: {
+    id: string;
+    code: string;
+    type: DocumentType;
+    total: number;
+    status: DocumentStatus;
+    createdAt: string;
+    client: { id: string; name: string; nuit?: string | null; email?: string | null; phone?: string | null; address?: string | null };
+    items: DocumentItem[];
+  };
+}
+
+export interface StockMovement {
+  id: string;
+  productId: string;
+  documentId?: string | null;
+  operatorId?: string | null;
+  type: "debit" | "credit";
+  quantity: number;
+  unit: UnitType;
+  note?: string | null;
+  createdAt: string;
+  product: { id: string; name: string; unit: UnitType };
+  operator?: { id: string; name: string; email: string } | null;
+  document?: { id: string; code: string; type: DocumentType } | null;
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/Layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +13,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Package, AlertTriangle, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
 
 export default function Products() {
   const { products, categories, addProduct, updateProduct, deleteProduct } = useData();
+  const [searchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") ?? "");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -37,6 +41,12 @@ export default function Products() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.categoryId) return;
+
+    const ok = await confirm({
+      title: editingProduct ? "Atualizar produto?" : "Criar produto?",
+      confirmLabel: editingProduct ? "Atualizar" : "Criar",
+    });
+    if (!ok) return;
 
     try {
       if (editingProduct) {
@@ -97,6 +107,14 @@ export default function Products() {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar produto?",
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Eliminar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await deleteProduct(id);
 

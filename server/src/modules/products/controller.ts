@@ -12,12 +12,12 @@ export async function get(req: Request, res: Response) {
 
 export async function create(req: Request, res: Response) {
   const data = createProductSchema.parse(req.body);
-  res.status(201).json(await service.create(data));
+  res.status(201).json(await service.create(req.user!.id, data));
 }
 
 export async function update(req: Request, res: Response) {
   const data = updateProductSchema.parse(req.body);
-  res.json(await service.update(req.params.id, data));
+  res.json(await service.update(req.params.id, req.user!.id, data));
 }
 
 export async function remove(req: Request, res: Response) {
@@ -27,5 +27,5 @@ export async function remove(req: Request, res: Response) {
 
 export async function adjustStock(req: Request, res: Response) {
   const data = adjustStockSchema.parse(req.body);
-  res.json(await service.adjustStock(req.params.id, data));
+  res.json(await service.adjustStock(req.params.id, req.user!.id, data));
 }

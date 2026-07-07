@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Wrench } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
@@ -25,10 +26,17 @@ export default function Services() {
     categoryId: "",
   });
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.categoryId) return;
+
+    const ok = await confirm({
+      title: editingService ? "Atualizar serviço?" : "Criar serviço?",
+      confirmLabel: editingService ? "Atualizar" : "Criar",
+    });
+    if (!ok) return;
 
     try {
       if (editingService) {
@@ -77,6 +85,14 @@ export default function Services() {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar serviço?",
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Eliminar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await deleteService(id);
 

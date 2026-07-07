@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Calculator } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
@@ -23,9 +24,17 @@ export default function TaxesPage() {
     percentage: ""
   });
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const ok = await confirm({
+      title: editingTax ? "Atualizar imposto?" : "Criar imposto?",
+      confirmLabel: editingTax ? "Atualizar" : "Criar",
+    });
+    if (!ok) return;
+
     try {
       if (editingTax) {
         await updateTax(editingTax.id, {
@@ -70,6 +79,14 @@ export default function TaxesPage() {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar imposto?",
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Eliminar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await deleteTax(id);
 
@@ -215,6 +232,15 @@ export default function TaxesPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>

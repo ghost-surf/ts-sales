@@ -11,6 +11,7 @@ const detailInclude = {
   paymentLinks: { include: { payment: true } },
   sourceQuotation: { select: { id: true, code: true } },
   convertedInvoice: { select: { id: true, code: true } },
+  creditNote: { select: { id: true, code: true } },
 } satisfies Prisma.DocumentInclude;
 
 type DocumentWithStatus = { type: string; status: string; dueDate: Date | null };
@@ -32,8 +33,11 @@ function withPaidAmount<T extends DocumentWithStatus & { paymentLinks: Array<{ a
 }
 
 function transitions(type: "FACT" | "COT"): Record<string, string[]> {
+  // Uma fatura emitida ou paga só pode ser anulada através de uma Nota de Crédito
+  // (módulo creditNotes), que também reverte stock e caixa. Aqui só sobra draft->canceled,
+  // que não tem nenhum efeito colateral a reverter.
   return type === "FACT"
-    ? { draft: ["issued", "canceled"], issued: ["canceled"], canceled: [], paid: [] }
+    ? { draft: ["issued", "canceled"], issued: [], canceled: [], paid: [] }
     : {
         draft: ["issued", "canceled"],
         issued: ["accepted", "rejected", "canceled"],
@@ -49,6 +53,7 @@ export async function list(query: ListDocumentsQuery) {
     include: {
       client: { select: { id: true, name: true } },
       paymentLinks: { select: { amount: true } },
+      creditNote: { select: { id: true, code: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -145,7 +150,7 @@ export async function create(operatorId: string, input: CreateDocumentInput) {
     });
 
     if (input.type === "FACT" && input.status === "issued") {
-      await debitStockForItems(tx, document.id, document.code, itemsData);
+      await debitStockForItems(tx, document.id, document.code, operatorId, itemsData);
     }
 
     return withPaidAmount(document);
@@ -156,6 +161,7 @@ async function debitStockForItems(
   tx: Prisma.TransactionClient,
   documentId: string,
   documentCode: string,
+  operatorId: string,
   items: Array<{
     itemType: string;
     itemId: string;
@@ -173,6 +179,7 @@ async function debitStockForItems(
       data: {
         productId: item.itemId,
         documentId,
+        operatorId,
         type: "debit",
         quantity: item.quantity,
         unit: (item.unit as "metros" | "pcs") ?? "pcs",
@@ -182,37 +189,7 @@ async function debitStockForItems(
   }
 }
 
-async function creditStockForItems(
-  tx: Prisma.TransactionClient,
-  documentId: string,
-  note: string,
-  items: Array<{
-    itemType: string;
-    itemId: string;
-    quantity: Prisma.Decimal | number | string;
-    unit?: string | null;
-  }>
-) {
-  for (const item of items) {
-    if (item.itemType !== "product") continue;
-    await tx.product.update({
-      where: { id: item.itemId },
-      data: { stockQty: { increment: item.quantity } },
-    });
-    await tx.stockMovement.create({
-      data: {
-        productId: item.itemId,
-        documentId,
-        type: "credit",
-        quantity: item.quantity,
-        unit: (item.unit as "metros" | "pcs") ?? "pcs",
-        note,
-      },
-    });
-  }
-}
-
-export async function updateStatus(id: string, { status }: UpdateStatusInput) {
+export async function updateStatus(id: string, operatorId: string, { status }: UpdateStatusInput) {
   return prisma.$transaction(async (tx) => {
     const document = await tx.document.findUnique({ where: { id }, include: { items: true } });
     if (!document) throw new NotFoundError("Documento não encontrado");
@@ -220,10 +197,6 @@ export async function updateStatus(id: string, { status }: UpdateStatusInput) {
     const allowed = transitions(document.type)[document.status] ?? [];
     if (!allowed.includes(status)) {
       throw new BadRequestError(`Transição de estado inválida: ${document.status} -> ${status}`);
-    }
-
-    if (document.type === "FACT" && document.status === "issued" && status === "canceled") {
-      await creditStockForItems(tx, id, `Estorno por cancelamento de ${document.code}`, document.items);
     }
 
     if (document.type === "FACT" && document.status === "draft" && status === "issued") {
@@ -234,7 +207,7 @@ export async function updateStatus(id: string, { status }: UpdateStatusInput) {
           throw new BadRequestError(`Stock insuficiente para "${item.description}"`);
         }
       }
-      await debitStockForItems(tx, id, document.code, document.items);
+      await debitStockForItems(tx, id, document.code, operatorId, document.items);
     }
 
     const updated = await tx.document.update({ where: { id }, data: { status }, include: detailInclude });
@@ -295,7 +268,7 @@ export async function convertToInvoice(quotationId: string, operatorId: string) 
       include: detailInclude,
     });
 
-    await debitStockForItems(tx, invoice.id, quotation.code, quotation.items);
+    await debitStockForItems(tx, invoice.id, quotation.code, operatorId, quotation.items);
     await tx.document.update({ where: { id: quotation.id }, data: { status: "accepted" } });
 
     return withPaidAmount(invoice);

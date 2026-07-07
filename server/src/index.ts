@@ -2,5 +2,5 @@ import { app } from "./app";
 import { env } from "./lib/env";
 
 app.listen(env.port, () => {
-  console.log(`HydroStock API a correr em http://localhost:${env.port}`);
+  console.log(`TS Sales API a correr em http://localhost:${env.port}`);
 });

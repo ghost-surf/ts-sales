@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Users, Edit, Trash2, Eye } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
@@ -22,6 +23,7 @@ export default function Clients() {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -33,6 +35,13 @@ export default function Clients() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const ok = await confirm({
+      title: editingClient ? "Atualizar cliente?" : "Criar cliente?",
+      confirmLabel: editingClient ? "Atualizar" : "Criar",
+    });
+    if (!ok) return;
+
     try {
       if (editingClient) {
         await updateClient(editingClient.id, {
@@ -86,6 +95,14 @@ export default function Clients() {
   };
 
   const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar cliente?",
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Eliminar",
+      variant: "destructive",
+    });
+    if (!ok) return;
+
     try {
       await deleteClient(id);
 

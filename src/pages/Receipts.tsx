@@ -16,7 +16,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { ApiError } from "@/lib/api";
 import { normalizeSearch } from "@/lib/utils";
-import { Payment } from "@/types";
+import { paymentMethodLabel } from "@/lib/statusLabels";
+import { Payment, PaymentMethod } from "@/types";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function Receipts() {
   const { payments, documents, registerPayment } = useData();
@@ -28,7 +31,7 @@ export default function Receipts() {
   const [invoiceSearch, setInvoiceSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
-  const [method, setMethod] = useState<"numerario" | "cheque">("numerario");
+  const [method, setMethod] = useState<PaymentMethod>("numerario");
   const [chequeNumber, setChequeNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,15 +51,13 @@ export default function Receipts() {
     documentCodesFor(receipt).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filteredReceipts);
+
   const today = new Date().toISOString().split('T')[0];
 
-  const getPaymentMethodBadge = (method: string) => {
-    return method === 'numerario' ? (
-      <Badge variant="default">Numerário</Badge>
-    ) : (
-      <Badge variant="secondary">Cheque</Badge>
-    );
-  };
+  const getPaymentMethodBadge = (method: PaymentMethod) => (
+    <Badge variant={method === "numerario" ? "default" : "secondary"}>{paymentMethodLabel(method)}</Badge>
+  );
 
   const handleViewReceipt = (receipt: Payment) => navigate(`/receipt/${receipt.id}`);
   const handleDownloadReceipt = (receipt: Payment) => navigate(`/receipt/${receipt.id}`);
@@ -198,6 +199,8 @@ export default function Receipts() {
                               min="0"
                               max={invoice.remaining}
                               value={amounts[invoice.id] ?? ""}
+                              disabled
+                              readOnly
                               onChange={(e) => setAmounts((prev) => ({ ...prev, [invoice.id]: e.target.value }))}
                               className="w-28 h-8 text-sm"
                             />
@@ -211,13 +214,14 @@ export default function Receipts() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="new-receipt-method">Forma de Pagamento</Label>
-                    <Select value={method} onValueChange={(v: "numerario" | "cheque") => setMethod(v)}>
+                    <Select value={method} onValueChange={(v: PaymentMethod) => setMethod(v)}>
                       <SelectTrigger id="new-receipt-method">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="numerario">Numerário</SelectItem>
                         <SelectItem value="cheque">Cheque</SelectItem>
+                        <SelectItem value="transferencia">Transferência</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -340,10 +344,13 @@ export default function Receipts() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReceipts.map((receipt) => (
+                  {pageItems.map((receipt) => (
                     <TableRow key={receipt.id}>
                       <TableCell className="font-medium font-mono">
-                        {receipt.receiptCode}
+                        <div className="flex items-center gap-2">
+                          {receipt.receiptCode}
+                          {receipt.kind === "reversal" && <Badge variant="destructive">Estorno</Badge>}
+                        </div>
                       </TableCell>
                       <TableCell>{clientNamesFor(receipt)}</TableCell>
                       <TableCell className="font-mono text-sm">
@@ -359,7 +366,9 @@ export default function Receipts() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono font-medium">
+                      <TableCell
+                        className={`font-mono font-medium ${receipt.kind === "reversal" ? "text-destructive" : ""}`}
+                      >
                         {receipt.amount.toFixed(2)} MTN
                       </TableCell>
                       <TableCell>
@@ -389,6 +398,14 @@ export default function Receipts() {
                 </TableBody>
               </Table>
             )}
+            <TablePagination
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </CardContent>
         </Card>
       </div>

@@ -39,6 +39,12 @@ enum ItemType {
 enum PaymentMethod {
   numerario
   cheque
+  transferencia
+}
+
+enum PaymentKind {
+  payment
+  reversal
 }
 
 enum MovementType {
@@ -50,6 +56,8 @@ enum CounterType {
   FACT
   COT
   REC
+  NC
+  EST
 }
 
 model User {
@@ -61,9 +69,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens  RefreshToken[]
-  operatedDocs   Document[]     @relation("DocumentOperator")
-  operatedPays   Payment[]      @relation("PaymentOperator")
+  refreshTokens   RefreshToken[]
+  operatedDocs    Document[]      @relation("DocumentOperator")
+  operatedPays    Payment[]       @relation("PaymentOperator")
+  stockMovements  StockMovement[]
+  creditNotes     CreditNote[]
 }
 
 model RefreshToken {
@@ -166,6 +176,7 @@ model Document {
   stockMovements   StockMovement[]
   sourceQuotation  Document?         @relation("QuotationConversion", fields: [sourceQuotationId], references: [id])
   convertedInvoice Document?         @relation("QuotationConversion")
+  creditNote       CreditNote?
 
   @@index([clientId])
   @@index([operatorId])
@@ -196,6 +207,7 @@ model Payment {
   method       PaymentMethod
   chequeNumber String?
   amount       Decimal       @db.Decimal(10, 2)
+  kind         PaymentKind   @default(payment)
   operatorId   String
   createdAt    DateTime      @default(now())
 
@@ -229,6 +241,7 @@ model StockMovement {
   id         String       @id @default(cuid())
   productId  String
   documentId String?
+  operatorId String?
   type       MovementType
   quantity   Decimal      @db.Decimal(10, 2)
   unit       UnitType
@@ -237,7 +250,39 @@ model StockMovement {
 
   product  Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
   document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  operator User?     @relation(fields: [operatorId], references: [id], onDelete: SetNull)
 
   @@index([productId])
   @@index([documentId])
+  @@index([operatorId])
+}
+
+/// Anulação total de uma fatura já emitida — sempre referencia a fatura anulada, nunca parcial.
+model CreditNote {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  documentId String   @unique
+  operatorId String
+  total      Decimal  @db.Decimal(10, 2)
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  operator User     @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+}
+
+/// Singleton row (fixed id) holding the company's own info, shown on invoices/quotations/receipts.
+model CompanySettings {
+  id                String   @id @default("company")
+  name              String   @default("Minha Empresa")
+  address           String?
+  email             String?
+  nuit              String?
+  phone             String?
+  website           String?
+  logo              String?  @db.LongText
+  bankName          String?
+  bankAccountHolder String?
+  bankIban          String?
+  updatedAt         DateTime @updatedAt
 }

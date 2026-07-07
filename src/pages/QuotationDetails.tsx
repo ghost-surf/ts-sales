@@ -11,6 +11,8 @@ import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { ApiError } from "@/lib/api";
 import { printAs } from "@/lib/printDocument";
+import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentBankDetails } from "@/components/DocumentBankDetails";
 import { AppDocument } from "@/types";
 
 export default function QuotationDetails() {
@@ -136,15 +138,7 @@ export default function QuotationDetails() {
         <Card className="print:shadow-none print:border-none">
           <CardHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-2">HydroStock Pro</h2>
-                <p className="text-sm text-muted-foreground">
-                  Rua Principal, 456<br />
-                  Maputo, Moçambique<br />
-                  Tel: +258 21 123 456<br />
-                  NUIT: 987654321
-                </p>
-              </div>
+              <CompanyLetterhead />
               <div>
                 <h3 className="text-lg font-semibold">Cotação para:</h3>
                 <p className="text-sm">
@@ -238,6 +232,8 @@ export default function QuotationDetails() {
                   <li>• Instalação incluída no preço</li>
                 </ul>
               </div>
+
+              <DocumentBankDetails />
 
               <div className="text-sm text-muted-foreground">
                 <p>Obrigado pela oportunidade de apresentar esta cotação!</p>

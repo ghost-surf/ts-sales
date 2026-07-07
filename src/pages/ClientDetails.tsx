@@ -15,7 +15,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
-import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
+import { documentStatusLabel, documentStatusVariant, paymentMethodLabel } from "@/lib/statusLabels";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 export default function ClientDetails() {
   const { id } = useParams();
@@ -53,6 +55,10 @@ export default function ClientDetails() {
   const totalPending = invoices
     .filter((i) => i.status !== "paid" && i.status !== "canceled")
     .reduce((sum, i) => sum + Math.max(i.total - i.paidAmount, 0), 0);
+
+  const invoicesPagination = usePagination(invoices);
+  const quotationsPagination = usePagination(quotations);
+  const receiptsPagination = usePagination(clientReceipts);
 
   return (
     <Layout>
@@ -153,6 +159,7 @@ export default function ClientDetails() {
             {invoices.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-8">Nenhuma fatura para este cliente</p>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -164,7 +171,7 @@ export default function ClientDetails() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((invoice) => (
+                  {invoicesPagination.pageItems.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell>
                         <Link to={`/invoice/${invoice.id}`} className="font-mono text-primary hover:underline">
@@ -183,6 +190,15 @@ export default function ClientDetails() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={invoicesPagination.page}
+                totalPages={invoicesPagination.totalPages}
+                pageSize={invoicesPagination.pageSize}
+                totalItems={invoicesPagination.totalItems}
+                onPageChange={invoicesPagination.setPage}
+                onPageSizeChange={invoicesPagination.setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>
@@ -196,6 +212,7 @@ export default function ClientDetails() {
             {quotations.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-8">Nenhuma cotação para este cliente</p>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -206,7 +223,7 @@ export default function ClientDetails() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {quotations.map((quotation) => (
+                  {quotationsPagination.pageItems.map((quotation) => (
                     <TableRow key={quotation.id}>
                       <TableCell>
                         <Link to={`/quotation/${quotation.id}`} className="font-mono text-primary hover:underline">
@@ -224,6 +241,15 @@ export default function ClientDetails() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={quotationsPagination.page}
+                totalPages={quotationsPagination.totalPages}
+                pageSize={quotationsPagination.pageSize}
+                totalItems={quotationsPagination.totalItems}
+                onPageChange={quotationsPagination.setPage}
+                onPageSizeChange={quotationsPagination.setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>
@@ -237,6 +263,7 @@ export default function ClientDetails() {
             {clientReceipts.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-8">Nenhum recibo para este cliente</p>
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -247,7 +274,7 @@ export default function ClientDetails() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clientReceipts.map((receipt) => (
+                  {receiptsPagination.pageItems.map((receipt) => (
                     <TableRow key={receipt.id}>
                       <TableCell>
                         <Link to={`/receipt/${receipt.id}`} className="font-mono text-primary hover:underline">
@@ -257,7 +284,7 @@ export default function ClientDetails() {
                       <TableCell>{new Date(receipt.paymentDate).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant={receipt.method === "numerario" ? "default" : "secondary"}>
-                          {receipt.method === "numerario" ? "Numerário" : "Cheque"}
+                          {paymentMethodLabel(receipt.method)}
                         </Badge>
                       </TableCell>
                       <TableCell>{receipt.amount.toFixed(2)} MTN</TableCell>
@@ -265,6 +292,15 @@ export default function ClientDetails() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                page={receiptsPagination.page}
+                totalPages={receiptsPagination.totalPages}
+                pageSize={receiptsPagination.pageSize}
+                totalItems={receiptsPagination.totalItems}
+                onPageChange={receiptsPagination.setPage}
+                onPageSizeChange={receiptsPagination.setPageSize}
+              />
+              </>
             )}
           </CardContent>
         </Card>

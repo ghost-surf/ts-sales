@@ -18,6 +18,9 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Building2,
+  History,
+  Ban,
 } from "lucide-react";
 
 const navigation: Array<{ name: string; href: string; icon: typeof LayoutDashboard; roles?: UserRole[] }> = [
@@ -31,8 +34,11 @@ const navigation: Array<{ name: string; href: string; icon: typeof LayoutDashboa
   { name: "Impostos", href: "/taxes", icon: Percent, roles: ["admin"] },
   { name: "Clientes", href: "/clients", icon: Users },
   { name: "Recibos", href: "/receipts", icon: Receipt },
+  { name: "Notas de Crédito", href: "/credit-notes", icon: Ban },
   { name: "Utilizadores", href: "/users", icon: Settings, roles: ["admin"] },
-  { name: "Relatórios", href: "/reports", icon: BarChart3 },
+  { name: "Relatórios", href: "/reports", icon: BarChart3, roles: ["admin"] },
+  { name: "Movimentações de Stock", href: "/stock-movements", icon: History, roles: ["admin"] },
+  { name: "Definições", href: "/settings", icon: Building2, roles: ["admin"] },
 ];
 
 export function Sidebar() {
@@ -54,8 +60,8 @@ export function Sidebar() {
         <div className="flex items-center justify-between">
           {!collapsed && (
             <div>
-              <h1 className="text-xl font-bold text-primary">HydroStock</h1>
-              <p className="text-sm text-muted-foreground">Pro Management</p>
+              <h1 className="text-xl font-bold text-primary">TS Sales</h1>
+              <p className="text-sm text-muted-foreground">Top Secret</p>
             </div>
           )}
           <Button

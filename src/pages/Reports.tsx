@@ -10,6 +10,8 @@ import { DollarSign, FileText, Users, Package, Download } from "lucide-react";
 import { Bar, BarChart, Cell, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/TablePagination";
 
 const STATUS_COLOR: Record<string, string> = {
   ok: "hsl(var(--primary))",
@@ -114,6 +116,16 @@ export default function Reports() {
     label: c.clientName.length > 14 ? `${c.clientName.slice(0, 14)}…` : c.clientName,
     total: c.totalInvoiced,
   }));
+
+  const {
+    pageItems: clientBreakdownPage,
+    page: clientPage,
+    setPage: setClientPage,
+    pageSize: clientPageSize,
+    setPageSize: setClientPageSize,
+    totalPages: clientTotalPages,
+    totalItems: clientTotalItems,
+  } = usePagination(clientBreakdown);
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -318,7 +330,7 @@ export default function Reports() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      clientBreakdown.map((row) => (
+                      clientBreakdownPage.map((row) => (
                         <TableRow key={row.clientId}>
                           <TableCell className="font-medium">{row.clientName}</TableCell>
                           <TableCell>{row.invoiceCount}</TableCell>
@@ -332,6 +344,14 @@ export default function Reports() {
                     )}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={clientPage}
+                  totalPages={clientTotalPages}
+                  pageSize={clientPageSize}
+                  totalItems={clientTotalItems}
+                  onPageChange={setClientPage}
+                  onPageSizeChange={setClientPageSize}
+                />
               </CardContent>
             </Card>
 

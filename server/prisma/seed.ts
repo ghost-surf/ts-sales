@@ -5,8 +5,8 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@hydrostock.com";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
+  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@carecatech.co.mz";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "Admin1234";
   const adminName = process.env.SEED_ADMIN_NAME ?? "Administrador";
 
   const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
@@ -106,6 +106,11 @@ async function main() {
     if (!existing) {
       await prisma.counter.create({ data: { year, type, lastNumber: 0 } });
     }
+  }
+
+  const existingSettings = await prisma.companySettings.findUnique({ where: { id: "company" } });
+  if (!existingSettings) {
+    await prisma.companySettings.create({ data: { id: "company" } });
   }
 
   console.log("Seed concluído.");

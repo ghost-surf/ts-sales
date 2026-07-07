@@ -22,6 +22,7 @@ import {
   Search,
 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { normalizeSearch } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ interface SaleItem {
 
 export default function Sales() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { clients, products, services, categories, taxes, addClient, createInvoice, createQuotation } = useData();
 
   const [documentType, setDocumentType] = useState<"invoice" | "quotation">("invoice");
@@ -173,6 +175,14 @@ export default function Sales() {
       });
       return;
     }
+
+    const clientName = clients.find((c) => c.id === selectedClient)?.name ?? "";
+    const ok = await confirm({
+      title: documentType === "invoice" ? "Criar fatura?" : "Criar cotação?",
+      description: `${documentType === "invoice" ? "Esta fatura" : "Esta cotação"} será criada para ${clientName}, no valor de ${total.toFixed(2)} MTN.${documentType === "invoice" ? " O stock dos produtos será deduzido." : ""}`,
+      confirmLabel: "Criar",
+    });
+    if (!ok) return;
 
     setSaving(true);
     try {
