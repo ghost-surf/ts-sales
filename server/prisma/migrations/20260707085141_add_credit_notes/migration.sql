@@ -1,8 +1,8 @@
 -- AlterTable
-ALTER TABLE `counter` MODIFY `type` ENUM('FACT', 'COT', 'REC', 'NC', 'EST') NOT NULL;
+ALTER TABLE `Counter` MODIFY `type` ENUM('FACT', 'COT', 'REC', 'NC', 'EST') NOT NULL;
 
 -- AlterTable
-ALTER TABLE `payment` ADD COLUMN `kind` ENUM('payment', 'reversal') NOT NULL DEFAULT 'payment',
+ALTER TABLE `Payment` ADD COLUMN `kind` ENUM('payment', 'reversal') NOT NULL DEFAULT 'payment',
     MODIFY `method` ENUM('numerario', 'cheque', 'transferencia') NOT NULL;
 
 -- CreateTable

@@ -7,7 +7,7 @@ export const createProductSchema = z.object({
   price: z.number().nonnegative(),
   stockQty: z.number().nonnegative().default(0),
   lowStockThreshold: z.number().nonnegative().default(0),
-  unit: z.enum(["metros", "pcs"]),
+  unit: z.enum(["metros", "pcs", "kg", "litros"]),
 });
 
 export const updateProductSchema = createProductSchema.partial();

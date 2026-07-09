@@ -1,4 +1,15 @@
-import { DisplayStatus, DocumentType, PaymentMethod } from "@/types";
+import { DisplayStatus, DocumentType, PaymentMethod, UnitType } from "@/types";
+
+const UNIT_LABELS: Record<UnitType, string> = {
+  pcs: "Peças (pcs)",
+  metros: "Metros",
+  kg: "Quilogramas (kg)",
+  litros: "Litros (L)",
+};
+
+export function unitLabel(unit: UnitType): string {
+  return UNIT_LABELS[unit] ?? unit;
+}
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   numerario: "Numerário",

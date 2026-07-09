@@ -84,7 +84,7 @@ export async function create(operatorId: string, input: CreateDocumentInput) {
       description: string;
       unitPrice: Prisma.Decimal;
       quantity: number;
-      unit?: "metros" | "pcs";
+      unit?: "metros" | "pcs" | "kg" | "litros";
       lineTotal: number;
     }> = [];
 
@@ -182,7 +182,7 @@ async function debitStockForItems(
         operatorId,
         type: "debit",
         quantity: item.quantity,
-        unit: (item.unit as "metros" | "pcs") ?? "pcs",
+        unit: (item.unit as "metros" | "pcs" | "kg" | "litros") ?? "pcs",
         note: `Saída por documento ${documentCode}`,
       },
     });

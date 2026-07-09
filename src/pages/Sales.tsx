@@ -39,7 +39,9 @@ interface SaleItem {
 export default function Sales() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { clients, products, services, categories, taxes, addClient, createInvoice, createQuotation } = useData();
+  const { clients, products, services, getProductCategories, getServiceCategories, taxes, addClient, createInvoice, createQuotation } = useData();
+  const productCategories = getProductCategories();
+  const serviceCategories = getServiceCategories();
 
   const [documentType, setDocumentType] = useState<"invoice" | "quotation">("invoice");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -352,7 +354,7 @@ export default function Sales() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todas Categorias</SelectItem>
-                          {categories.map((category) => (
+                          {productCategories.map((category) => (
                             <SelectItem key={category.id} value={category.id}>
                               {category.name}
                             </SelectItem>
@@ -414,7 +416,7 @@ export default function Sales() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todas Categorias</SelectItem>
-                          {categories.map((category) => (
+                          {serviceCategories.map((category) => (
                             <SelectItem key={category.id} value={category.id}>
                               {category.name}
                             </SelectItem>

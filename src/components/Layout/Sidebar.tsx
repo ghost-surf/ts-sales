@@ -21,6 +21,7 @@ import {
   Building2,
   History,
   Ban,
+  Tags,
 } from "lucide-react";
 
 const navigation: Array<{ name: string; href: string; icon: typeof LayoutDashboard; roles?: UserRole[] }> = [
@@ -29,8 +30,9 @@ const navigation: Array<{ name: string; href: string; icon: typeof LayoutDashboa
   { name: "Faturas", href: "/invoices", icon: Receipt },
   { name: "Cotações", href: "/quotations", icon: FileText },
   { name: "Produtos", href: "/products", icon: Package },
-  { name: "Categorias", href: "/categories", icon: FolderOpen, roles: ["admin"] },
+  { name: "Categorias de Produtos", href: "/categories", icon: FolderOpen, roles: ["admin"] },
   { name: "Serviços", href: "/services", icon: Wrench, roles: ["admin"] },
+  { name: "Categorias de Serviços", href: "/service-categories", icon: Tags, roles: ["admin"] },
   { name: "Impostos", href: "/taxes", icon: Percent, roles: ["admin"] },
   { name: "Clientes", href: "/clients", icon: Users },
   { name: "Recibos", href: "/receipts", icon: Receipt },

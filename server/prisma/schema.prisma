@@ -15,6 +15,13 @@ enum UserRole {
 enum UnitType {
   metros
   pcs
+  kg
+  litros
+}
+
+enum CategoryType {
+  product
+  service
 }
 
 enum DocumentType {
@@ -103,14 +110,17 @@ model Client {
 }
 
 model Category {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   name      String
-  unit      UnitType
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  type      CategoryType @default(product)
+  unit      UnitType?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   products Product[]
   services Service[]
+
+  @@index([type])
 }
 
 model Product {

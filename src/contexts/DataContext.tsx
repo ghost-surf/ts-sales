@@ -16,6 +16,7 @@ import {
   StockMovement,
   CreditNote,
   PaymentMethod,
+  CategoryType,
 } from "@/types";
 
 // ---- Raw API shapes -> frontend-friendly shapes -------------------------
@@ -23,7 +24,8 @@ import {
 interface RawCategory {
   id: string;
   name: string;
-  unit: UnitType;
+  type: CategoryType;
+  unit?: UnitType | null;
   createdAt: string;
 }
 
@@ -50,7 +52,7 @@ interface RawService {
 }
 
 function mapCategory(raw: RawCategory): Category {
-  return { id: raw.id, name: raw.name, unit: raw.unit, createdAt: raw.createdAt };
+  return { id: raw.id, name: raw.name, type: raw.type, unit: raw.unit, createdAt: raw.createdAt };
 }
 
 function mapProduct(raw: RawProduct): Product {
@@ -145,6 +147,8 @@ interface DataContextType {
   addCategory: (category: Omit<Category, "id" | "createdAt">) => Promise<Category>;
   updateCategory: (id: string, category: Partial<Omit<Category, "id" | "createdAt">>) => Promise<Category>;
   deleteCategory: (id: string) => Promise<void>;
+  getProductCategories: () => Category[];
+  getServiceCategories: () => Category[];
 
   products: Product[];
   addProduct: (product: Omit<Product, "id" | "createdAt" | "category">) => Promise<Product>;
@@ -341,6 +345,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await api.delete(`/categories/${id}`);
     await refreshCategories();
   };
+  const getProductCategories = () => categories.filter((c) => c.type === "product");
+  const getServiceCategories = () => categories.filter((c) => c.type === "service");
 
   // ---- Products ----
   const addProduct: DataContextType["addProduct"] = async (data) => {
@@ -481,6 +487,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         addCategory,
         updateCategory,
         deleteCategory,
+        getProductCategories,
+        getServiceCategories,
         products,
         addProduct,
         updateProduct,

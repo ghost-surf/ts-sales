@@ -17,7 +17,8 @@ import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
 
 export default function Services() {
-  const { services, categories, addService, updateService, deleteService } = useData();
+  const { services, getServiceCategories, addService, updateService, deleteService } = useData();
+  const categories = getServiceCategories();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<any>(null);
   const [formData, setFormData] = useState({

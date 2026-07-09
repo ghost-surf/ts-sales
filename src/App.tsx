@@ -13,6 +13,7 @@ import ClientDetails from "./pages/ClientDetails";
 import Sales from "./pages/Sales";
 import Auth from "./pages/Auth";
 import Categories from "./pages/Categories";
+import ServiceCategories from "./pages/ServiceCategories";
 import Services from "./pages/Services";
 import Users from "./pages/Users";
 import Receipts from "./pages/Receipts";
@@ -49,6 +50,14 @@ const App = () => (
               element={
                 <ProtectedRoute roles={["admin"]}>
                   <Categories />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/service-categories"
+              element={
+                <ProtectedRoute roles={["admin"]}>
+                  <ServiceCategories />
                 </ProtectedRoute>
               }
             />

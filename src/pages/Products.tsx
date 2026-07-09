@@ -17,9 +17,12 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { unitLabel } from "@/lib/statusLabels";
+import { UnitType } from "@/types";
 
 export default function Products() {
-  const { products, categories, addProduct, updateProduct, deleteProduct } = useData();
+  const { products, getProductCategories, addProduct, updateProduct, deleteProduct } = useData();
+  const categories = getProductCategories();
   const [searchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -34,7 +37,7 @@ export default function Products() {
     price: "",
     stock: "",
     lowStockThreshold: "10",
-    unit: "pcs" as "metros" | "pcs",
+    unit: "pcs" as UnitType,
     description: "",
   });
 
@@ -251,7 +254,7 @@ export default function Products() {
                     <Label htmlFor="unit">Unidade</Label>
                     <Select
                       value={formData.unit}
-                      onValueChange={(value: "metros" | "pcs") => setFormData({...formData, unit: value})}
+                      onValueChange={(value: UnitType) => setFormData({...formData, unit: value})}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -259,6 +262,8 @@ export default function Products() {
                       <SelectContent>
                         <SelectItem value="pcs">Peças (pcs)</SelectItem>
                         <SelectItem value="metros">Metros</SelectItem>
+                        <SelectItem value="kg">Quilogramas (kg)</SelectItem>
+                        <SelectItem value="litros">Litros (L)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

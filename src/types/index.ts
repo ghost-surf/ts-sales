@@ -18,12 +18,15 @@ export interface Client {
   createdAt: string;
 }
 
-export type UnitType = "metros" | "pcs";
+export type UnitType = "metros" | "pcs" | "kg" | "litros";
+
+export type CategoryType = "product" | "service";
 
 export interface Category {
   id: string;
   name: string;
-  unit: UnitType;
+  type: CategoryType;
+  unit?: UnitType | null;
   createdAt: string;
 }
 

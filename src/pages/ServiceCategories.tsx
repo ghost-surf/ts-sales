@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
@@ -15,18 +13,13 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
-import { unitLabel } from "@/lib/statusLabels";
-import { UnitType } from "@/types";
 
-export default function Categories() {
-  const { getProductCategories, addCategory, updateCategory, deleteCategory } = useData();
-  const categories = getProductCategories();
+export default function ServiceCategories() {
+  const { getServiceCategories, addCategory, updateCategory, deleteCategory } = useData();
+  const categories = getServiceCategories();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    unit: "pcs" as UnitType,
-  });
+  const [formData, setFormData] = useState({ name: "" });
   const { toast } = useToast();
   const confirm = useConfirm();
 
@@ -41,21 +34,14 @@ export default function Categories() {
 
     try {
       if (editingCategory) {
-        await updateCategory(editingCategory.id, {
-          name: formData.name,
-          unit: formData.unit,
-        });
+        await updateCategory(editingCategory.id, { name: formData.name });
 
         toast({
           title: "Categoria atualizada!",
           description: "A categoria foi atualizada com sucesso."
         });
       } else {
-        await addCategory({
-          name: formData.name,
-          type: "product",
-          unit: formData.unit,
-        });
+        await addCategory({ name: formData.name, type: "service", unit: null });
 
         toast({
           title: "Categoria criada!",
@@ -76,10 +62,7 @@ export default function Categories() {
 
   const handleEdit = (category: any) => {
     setEditingCategory(category);
-    setFormData({
-      name: category.name,
-      unit: category.unit ?? "pcs",
-    });
+    setFormData({ name: category.name });
     setDialogOpen(true);
   };
 
@@ -109,7 +92,7 @@ export default function Categories() {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", unit: "pcs" });
+    setFormData({ name: "" });
     setEditingCategory(null);
   };
 
@@ -125,9 +108,9 @@ export default function Categories() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Categorias de Produtos</h1>
+            <h1 className="text-3xl font-bold text-foreground">Categorias de Serviços</h1>
             <p className="text-muted-foreground">
-              Gerir categorias usadas no catálogo de produtos
+              Gerir categorias usadas no catálogo de serviços
             </p>
           </div>
 
@@ -141,7 +124,7 @@ export default function Categories() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingCategory ? 'Editar Categoria' : 'Nova Categoria de Produtos'}
+                  {editingCategory ? 'Editar Categoria' : 'Nova Categoria de Serviços'}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -151,26 +134,9 @@ export default function Categories() {
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Ex: Tubagem PVC"
+                    placeholder="Ex: Serviços Técnicos"
                     required
                   />
-                </div>
-                <div>
-                  <Label htmlFor="unit">Unidade de Medida</Label>
-                  <Select
-                    value={formData.unit}
-                    onValueChange={(value: UnitType) => setFormData({...formData, unit: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pcs">Peças (pcs)</SelectItem>
-                      <SelectItem value="metros">Metros</SelectItem>
-                      <SelectItem value="kg">Quilogramas (kg)</SelectItem>
-                      <SelectItem value="litros">Litros (L)</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="flex space-x-2">
                   <Button type="submit">
@@ -187,14 +153,13 @@ export default function Categories() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Categorias de Produtos</CardTitle>
+            <CardTitle>Lista de Categorias de Serviços</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
-                  <TableHead>Unidade</TableHead>
                   <TableHead>Data de Criação</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
@@ -202,7 +167,7 @@ export default function Categories() {
               <TableBody>
                 {categories.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                       Nenhuma categoria encontrada
                     </TableCell>
                   </TableRow>
@@ -211,9 +176,6 @@ export default function Categories() {
                     <TableRow key={category.id}>
                       <TableCell className="font-medium">
                         {category.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{category.unit ? unitLabel(category.unit) : "—"}</Badge>
                       </TableCell>
                       <TableCell>
                         {new Date(category.createdAt).toLocaleDateString()}
