@@ -12,6 +12,7 @@ export const updateSettingsSchema = z.object({
   bankName: z.string().max(200).optional().nullable(),
   bankAccountHolder: z.string().max(200).optional().nullable(),
   bankIban: z.string().max(100).optional().nullable(),
+  notificationEmail: z.string().email("Email inválido").optional().or(z.literal("")).nullable(),
 });
 
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;

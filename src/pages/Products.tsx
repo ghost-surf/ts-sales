@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, Package, AlertTriangle, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
@@ -22,6 +23,8 @@ import { UnitType } from "@/types";
 
 export default function Products() {
   const { products, getProductCategories, addProduct, updateProduct, deleteProduct } = useData();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const categories = getProductCategories();
   const [searchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -172,124 +175,126 @@ export default function Products() {
               Gestão do catálogo de produtos hidráulicos
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Produto
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select 
-                    value={formData.categoryId} 
-                    onValueChange={(value) => setFormData({...formData, categoryId: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="name">Nome do Produto</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Ex: Tubo PVC 50mm"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Descrição detalhada do produto"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          {isAdmin && (
+            <Dialog open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : handleDialogClose())}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Produto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingProduct ? 'Editar Produto' : 'Novo Produto'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <Label htmlFor="price">Preço (MTN)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.price}
-                      onChange={(e) => setFormData({...formData, price: e.target.value})}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="stock">Quantidade em Stock</Label>
-                    <Input
-                      id="stock"
-                      type="number"
-                      min="0"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="unit">Unidade</Label>
+                    <Label htmlFor="category">Categoria</Label>
                     <Select
-                      value={formData.unit}
-                      onValueChange={(value: UnitType) => setFormData({...formData, unit: value})}
+                      value={formData.categoryId}
+                      onValueChange={(value) => setFormData({...formData, categoryId: value})}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Selecionar categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pcs">Peças (pcs)</SelectItem>
-                        <SelectItem value="metros">Metros</SelectItem>
-                        <SelectItem value="kg">Quilogramas (kg)</SelectItem>
-                        <SelectItem value="litros">Litros (L)</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="lowStockThreshold">Limite de Stock Baixo</Label>
+                    <Label htmlFor="name">Nome do Produto</Label>
                     <Input
-                      id="lowStockThreshold"
-                      type="number"
-                      min="0"
-                      value={formData.lowStockThreshold}
-                      onChange={(e) => setFormData({...formData, lowStockThreshold: e.target.value})}
-                      placeholder="10"
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      placeholder="Ex: Tubo PVC 50mm"
+                      required
                     />
                   </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button type="submit">
-                    {editingProduct ? 'Atualizar' : 'Criar'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleDialogClose}>
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div>
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      placeholder="Descrição detalhada do produto"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="price">Preço (MTN)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.price}
+                        onChange={(e) => setFormData({...formData, price: e.target.value})}
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="stock">Quantidade em Stock</Label>
+                      <Input
+                        id="stock"
+                        type="number"
+                        min="0"
+                        value={formData.stock}
+                        onChange={(e) => setFormData({...formData, stock: e.target.value})}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="unit">Unidade</Label>
+                      <Select
+                        value={formData.unit}
+                        onValueChange={(value: UnitType) => setFormData({...formData, unit: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pcs">Peças (pcs)</SelectItem>
+                          <SelectItem value="metros">Metros</SelectItem>
+                          <SelectItem value="kg">Quilogramas (kg)</SelectItem>
+                          <SelectItem value="litros">Litros (L)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="lowStockThreshold">Limite de Stock Baixo</Label>
+                      <Input
+                        id="lowStockThreshold"
+                        type="number"
+                        min="0"
+                        value={formData.lowStockThreshold}
+                        onChange={(e) => setFormData({...formData, lowStockThreshold: e.target.value})}
+                        placeholder="10"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button type="submit">
+                      {editingProduct ? 'Atualizar' : 'Criar'}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleDialogClose}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Summary Cards */}
@@ -384,13 +389,13 @@ export default function Products() {
                   <TableHead>Preço</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  {isAdmin && <TableHead className="text-right">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={isAdmin ? 6 : 5} className="text-center py-8 text-muted-foreground">
                       Nenhum produto encontrado
                     </TableCell>
                   </TableRow>
@@ -426,16 +431,18 @@ export default function Products() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end space-x-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDelete(product.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(product.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, Upload, X, Landmark } from "lucide-react";
+import { Building2, Upload, X, Landmark, Bell } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { ApiError } from "@/lib/api";
@@ -27,6 +27,7 @@ export default function Settings() {
     bankName: "",
     bankAccountHolder: "",
     bankIban: "",
+    notificationEmail: "",
   });
   const [logo, setLogo] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,6 +44,7 @@ export default function Settings() {
       bankName: companySettings.bankName ?? "",
       bankAccountHolder: companySettings.bankAccountHolder ?? "",
       bankIban: companySettings.bankIban ?? "",
+      notificationEmail: companySettings.notificationEmail ?? "",
     });
     setLogo(companySettings.logo ?? null);
   }, [companySettings]);
@@ -80,6 +82,7 @@ export default function Settings() {
         bankName: formData.bankName || null,
         bankAccountHolder: formData.bankAccountHolder || null,
         bankIban: formData.bankIban || null,
+        notificationEmail: formData.notificationEmail || null,
       });
       toast({ title: "Definições guardadas!", description: "Os dados da empresa foram atualizados com sucesso." });
     } catch (error) {
@@ -246,6 +249,32 @@ export default function Settings() {
                     placeholder="0000 0000 0000 0000 0000 0"
                   />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Bell className="h-5 w-5" />
+                <span>Notificações</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Email que recebe alertas automáticos de stock baixo/esgotado, faturas vencidas e notas de crédito
+                emitidas. Se deixar em branco, os alertas são enviados para os emails de todos os utilizadores
+                administradores.
+              </p>
+              <div>
+                <Label htmlFor="notificationEmail">Email para Notificações</Label>
+                <Input
+                  id="notificationEmail"
+                  type="email"
+                  value={formData.notificationEmail}
+                  onChange={(e) => setFormData({ ...formData, notificationEmail: e.target.value })}
+                  placeholder="alertas@empresa.com"
+                />
               </div>
             </CardContent>
           </Card>

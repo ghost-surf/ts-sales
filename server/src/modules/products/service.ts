@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
 import { NotFoundError, BadRequestError } from "../../utils/errors";
 import { CreateProductInput, UpdateProductInput, AdjustStockInput } from "./schemas";
+import { checkAndNotifyStock } from "../notifications/service";
 
 const include = { category: true } as const;
 
@@ -37,7 +38,7 @@ export async function create(operatorId: string, data: CreateProductInput) {
 
 export async function update(id: string, operatorId: string, data: UpdateProductInput) {
   const existing = await get(id);
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const updated = await tx.product.update({ where: { id }, data, include });
 
     if (data.stockQty !== undefined) {
@@ -58,6 +59,12 @@ export async function update(id: string, operatorId: string, data: UpdateProduct
 
     return updated;
   });
+
+  if (data.stockQty !== undefined) {
+    await checkAndNotifyStock(updated, existing.stockQty);
+  }
+
+  return updated;
 }
 
 export async function remove(id: string) {
@@ -66,7 +73,8 @@ export async function remove(id: string) {
 }
 
 export async function adjustStock(id: string, operatorId: string, { quantity, note }: AdjustStockInput) {
-  return prisma.$transaction(async (tx) => {
+  const existing = await get(id);
+  const updated = await prisma.$transaction(async (tx) => {
     const product = await tx.product.findUnique({ where: { id } });
     if (!product) throw new NotFoundError("Produto não encontrado");
 
@@ -92,4 +100,8 @@ export async function adjustStock(id: string, operatorId: string, { quantity, no
 
     return updated;
   });
+
+  await checkAndNotifyStock(updated, existing.stockQty);
+
+  return updated;
 }

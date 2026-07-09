@@ -130,6 +130,7 @@ export interface CompanySettings {
   bankName?: string | null;
   bankAccountHolder?: string | null;
   bankIban?: string | null;
+  notificationEmail?: string | null;
   updatedAt: string;
 }
 

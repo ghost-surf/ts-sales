@@ -294,5 +294,6 @@ model CompanySettings {
   bankName          String?
   bankAccountHolder String?
   bankIban          String?
+  notificationEmail String?
   updatedAt         DateTime @updatedAt
 }

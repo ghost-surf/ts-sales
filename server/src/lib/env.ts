@@ -17,4 +17,11 @@ export const env = {
   seedAdminName: process.env.SEED_ADMIN_NAME ?? "Administrador",
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL ?? "admin@hydrostock.com",
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? "admin123",
+  appUrl: process.env.APP_URL ?? "",
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: Number(process.env.SMTP_PORT ?? 587),
+  smtpSecure: process.env.SMTP_SECURE === "true",
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPass: process.env.SMTP_PASS ?? "",
+  smtpFrom: process.env.SMTP_FROM ?? "TS Sales <no-reply@ts-sales.local>",
 };

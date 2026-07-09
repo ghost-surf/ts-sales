@@ -3,6 +3,7 @@ import { prisma } from "../../lib/prisma";
 import { nextDocumentCode } from "../../utils/counters";
 import { BadRequestError, ConflictError, NotFoundError } from "../../utils/errors";
 import { CreateCreditNoteInput } from "./schemas";
+import { notifyCreditNoteIssued } from "../notifications/service";
 
 const include = {
   document: {
@@ -31,7 +32,7 @@ export async function get(id: string) {
 }
 
 export async function create(operatorId: string, input: CreateCreditNoteInput) {
-  return prisma.$transaction(async (tx) => {
+  const creditNote = await prisma.$transaction(async (tx) => {
     const invoice = await tx.document.findUnique({
       where: { id: input.documentId },
       include: { items: true, paymentLinks: true, creditNote: true },
@@ -106,4 +107,7 @@ export async function create(operatorId: string, input: CreateCreditNoteInput) {
 
     return tx.creditNote.findUniqueOrThrow({ where: { documentId: invoice.id }, include });
   });
+
+  await notifyCreditNoteIssued(creditNote);
+  return creditNote;
 }

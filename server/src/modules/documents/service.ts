@@ -1,8 +1,15 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, Product } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { nextDocumentCode } from "../../utils/counters";
 import { BadRequestError, ConflictError, NotFoundError } from "../../utils/errors";
 import { CreateDocumentInput, ListDocumentsQuery, UpdateStatusInput } from "./schemas";
+import { checkAndNotifyStock } from "../notifications/service";
+
+type StockChange = { product: Product; previousStockQty: number };
+
+async function notifyStockChanges(changes: StockChange[]) {
+  await Promise.all(changes.map(({ product, previousStockQty }) => checkAndNotifyStock(product, previousStockQty)));
+}
 
 const detailInclude = {
   client: true,
@@ -72,7 +79,8 @@ export async function get(id: string) {
 }
 
 export async function create(operatorId: string, input: CreateDocumentInput) {
-  return prisma.$transaction(async (tx) => {
+  let stockChanges: StockChange[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const client = await tx.client.findUnique({ where: { id: input.clientId } });
     if (!client) throw new NotFoundError("Cliente não encontrado");
 
@@ -150,11 +158,14 @@ export async function create(operatorId: string, input: CreateDocumentInput) {
     });
 
     if (input.type === "FACT" && input.status === "issued") {
-      await debitStockForItems(tx, document.id, document.code, operatorId, itemsData);
+      stockChanges = await debitStockForItems(tx, document.id, document.code, operatorId, itemsData);
     }
 
     return withPaidAmount(document);
   });
+
+  await notifyStockChanges(stockChanges);
+  return result;
 }
 
 async function debitStockForItems(
@@ -168,10 +179,11 @@ async function debitStockForItems(
     quantity: Prisma.Decimal | number | string;
     unit?: string | null;
   }>
-) {
+): Promise<StockChange[]> {
+  const changes: StockChange[] = [];
   for (const item of items) {
     if (item.itemType !== "product") continue;
-    await tx.product.update({
+    const updated = await tx.product.update({
       where: { id: item.itemId },
       data: { stockQty: { decrement: item.quantity } },
     });
@@ -186,11 +198,14 @@ async function debitStockForItems(
         note: `Saída por documento ${documentCode}`,
       },
     });
+    changes.push({ product: updated, previousStockQty: Number(updated.stockQty) + Number(item.quantity) });
   }
+  return changes;
 }
 
 export async function updateStatus(id: string, operatorId: string, { status }: UpdateStatusInput) {
-  return prisma.$transaction(async (tx) => {
+  let stockChanges: StockChange[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const document = await tx.document.findUnique({ where: { id }, include: { items: true } });
     if (!document) throw new NotFoundError("Documento não encontrado");
 
@@ -207,16 +222,20 @@ export async function updateStatus(id: string, operatorId: string, { status }: U
           throw new BadRequestError(`Stock insuficiente para "${item.description}"`);
         }
       }
-      await debitStockForItems(tx, id, document.code, operatorId, document.items);
+      stockChanges = await debitStockForItems(tx, id, document.code, operatorId, document.items);
     }
 
     const updated = await tx.document.update({ where: { id }, data: { status }, include: detailInclude });
     return withPaidAmount(updated);
   });
+
+  await notifyStockChanges(stockChanges);
+  return result;
 }
 
 export async function convertToInvoice(quotationId: string, operatorId: string) {
-  return prisma.$transaction(async (tx) => {
+  let stockChanges: StockChange[] = [];
+  const result = await prisma.$transaction(async (tx) => {
     const quotation = await tx.document.findUnique({
       where: { id: quotationId },
       include: { items: true, convertedInvoice: true },
@@ -268,9 +287,12 @@ export async function convertToInvoice(quotationId: string, operatorId: string) 
       include: detailInclude,
     });
 
-    await debitStockForItems(tx, invoice.id, quotation.code, operatorId, quotation.items);
+    stockChanges = await debitStockForItems(tx, invoice.id, quotation.code, operatorId, quotation.items);
     await tx.document.update({ where: { id: quotation.id }, data: { status: "accepted" } });
 
     return withPaidAmount(invoice);
   });
+
+  await notifyStockChanges(stockChanges);
+  return result;
 }
