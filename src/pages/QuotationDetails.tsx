@@ -11,8 +11,9 @@ import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { ApiError } from "@/lib/api";
 import { printAs } from "@/lib/printDocument";
-import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentHeader } from "@/components/DocumentHeader";
 import { DocumentBankDetails } from "@/components/DocumentBankDetails";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { AppDocument } from "@/types";
 
 export default function QuotationDetails() {
@@ -108,7 +109,7 @@ export default function QuotationDetails() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">Cotação {quotation.code}</h1>
               <p className="text-muted-foreground">
-                Data: {new Date(quotation.createdAt).toLocaleDateString()}
+                Data: {formatDate(quotation.createdAt)}
               </p>
             </div>
           </div>
@@ -136,32 +137,30 @@ export default function QuotationDetails() {
 
         {/* Quotation Content */}
         <Card className="print:shadow-none print:border-none">
-          <CardHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CompanyLetterhead />
-              <div>
-                <h3 className="text-lg font-semibold">Cotação para:</h3>
-                <p className="text-sm">
-                  {quotation.clientName}<br />
-                  {client?.address}<br />
-                  Tel: {client?.phone}<br />
-                  Email: {client?.email}
-                </p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <CardHeader className="pb-3">
+            <DocumentHeader
+              clientLabel="Cotação para"
+              client={{
+                name: quotation.clientName,
+                address: client?.address,
+                nuit: client?.nuit,
+                phone: client?.phone,
+                email: client?.email,
+              }}
+            />
+            <Separator className="my-3" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
                 <span className="font-medium">Número:</span>
                 <p>{quotation.code}</p>
               </div>
               <div>
                 <span className="font-medium">Data:</span>
-                <p>{new Date(quotation.createdAt).toLocaleDateString()}</p>
+                <p>{formatDate(quotation.createdAt)}</p>
               </div>
               <div>
                 <span className="font-medium">Validade:</span>
-                <p>{quotation.dueDate ? new Date(quotation.dueDate).toLocaleDateString() : "—"}</p>
+                <p>{formatDate(quotation.dueDate)}</p>
               </div>
               <div>
                 <span className="font-medium">Status:</span>
@@ -174,7 +173,7 @@ export default function QuotationDetails() {
           <CardContent>
             {/* Items Table */}
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Produto/Serviço</th>
@@ -184,12 +183,12 @@ export default function QuotationDetails() {
                   </tr>
                 </thead>
                 <tbody>
-                  {quotation.items.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-2">{item.description}</td>
-                      <td className="text-right py-2">{item.quantity}</td>
-                      <td className="text-right py-2">{item.unitPrice.toFixed(2)} MTN</td>
-                      <td className="text-right py-2">{item.lineTotal.toFixed(2)} MTN</td>
+                  {quotation.items.map((item, index) => (
+                    <tr key={item.id} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
+                      <td className="py-2 px-2">{item.description}</td>
+                      <td className="text-right py-2 px-2">{item.quantity}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(item.unitPrice)}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(item.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -197,48 +196,30 @@ export default function QuotationDetails() {
             </div>
 
             {/* Totals */}
-            <div className="mt-6 space-y-2">
+            <div className="mt-6 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>{(quotation.subtotalProducts + quotation.subtotalServices).toFixed(2)} MTN</span>
+                <span>{formatCurrency(quotation.subtotalProducts + quotation.subtotalServices)}</span>
               </div>
               {quotation.discountValue > 0 && (
                 <div className="flex justify-between">
                   <span>Desconto:</span>
-                  <span>-{quotation.discountValue.toFixed(2)} MTN</span>
+                  <span>{formatCurrency(-quotation.discountValue)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span>Imposto:</span>
-                <span>{quotation.vatValue.toFixed(2)} MTN</span>
+                <span>{formatCurrency(quotation.vatValue)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total:</span>
-                <span>{quotation.total.toFixed(2)} MTN</span>
+                <span>{formatCurrency(quotation.total)}</span>
               </div>
             </div>
 
-            <div className="mt-8 space-y-4">
-              <div className="p-4 bg-muted/20 rounded-lg">
-                <h4 className="font-medium mb-2">Condições:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>
-                    • Esta cotação é válida até{" "}
-                    {quotation.dueDate ? new Date(quotation.dueDate).toLocaleDateString() : "—"}
-                  </li>
-                  <li>• Preços sujeitos a alteração sem aviso prévio</li>
-                  <li>• Pagamento à vista ou em até 30 dias</li>
-                  <li>• Instalação incluída no preço</li>
-                </ul>
-              </div>
-
+            <div className="mt-8">
               <DocumentBankDetails />
-
-              <div className="text-sm text-muted-foreground">
-                <p>Obrigado pela oportunidade de apresentar esta cotação!</p>
-                <p>Para mais informações, entre em contato conosco.</p>
-              </div>
             </div>
           </CardContent>
         </Card>

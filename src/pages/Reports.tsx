@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency } from "@/lib/format";
 
 const STATUS_COLOR: Record<string, string> = {
   ok: "hsl(var(--primary))",
@@ -200,7 +201,7 @@ export default function Reports() {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card><CardContent className="pt-6"><div className="flex items-center space-x-2"><DollarSign className="h-5 w-5 text-success" /><div><p className="text-2xl font-bold">{salesData.total.toFixed(2)} MTN</p><p className="text-sm text-muted-foreground">Vendas Total</p></div></div></CardContent></Card>
+          <Card><CardContent className="pt-6"><div className="flex items-center space-x-2"><DollarSign className="h-5 w-5 text-success" /><div><p className="text-2xl font-bold">{formatCurrency(salesData.total)}</p><p className="text-sm text-muted-foreground">Vendas Total</p></div></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="flex items-center space-x-2"><FileText className="h-5 w-5 text-primary" /><div><p className="text-2xl font-bold">{salesData.count}</p><p className="text-sm text-muted-foreground">Faturas Pagas</p></div></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="flex items-center space-x-2"><Users className="h-5 w-5 text-info" /><div><p className="text-2xl font-bold">{clientsData.total}</p><p className="text-sm text-muted-foreground">Clientes</p></div></div></CardContent></Card>
           <Card><CardContent className="pt-6"><div className="flex items-center space-x-2"><Package className="h-5 w-5 text-warning" /><div><p className="text-2xl font-bold">{stockData.lowStock}</p><p className="text-sm text-muted-foreground">Stock Baixo</p></div></div></CardContent></Card>
@@ -224,7 +225,7 @@ export default function Reports() {
                       <XAxis dataKey="label" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} width={40} />
                       <Tooltip
-                        formatter={(value: number) => [`${value.toFixed(2)} MTN`, "Vendas"]}
+                        formatter={(value: number) => [formatCurrency(value), "Vendas"]}
                         contentStyle={chartTooltipStyle}
                       />
                       <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
@@ -237,9 +238,9 @@ export default function Reports() {
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-4 mt-4">
-                  <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{salesData.total.toFixed(2)} MTN</p><p className="text-sm text-muted-foreground">Total de Vendas</p></div>
+                  <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{formatCurrency(salesData.total)}</p><p className="text-sm text-muted-foreground">Total de Vendas</p></div>
                   <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{salesData.count}</p><p className="text-sm text-muted-foreground">Número de Vendas</p></div>
-                  <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{salesData.avgTicket.toFixed(2)} MTN</p><p className="text-sm text-muted-foreground">Ticket Médio</p></div>
+                  <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{formatCurrency(salesData.avgTicket)}</p><p className="text-sm text-muted-foreground">Ticket Médio</p></div>
                 </div>
               </CardContent>
             </Card>
@@ -263,7 +264,7 @@ export default function Reports() {
                         tickLine={false}
                       />
                       <Tooltip
-                        formatter={(value: number) => [`${value.toFixed(2)} MTN`, "Valor em stock"]}
+                        formatter={(value: number) => [formatCurrency(value), "Valor em stock"]}
                         contentStyle={chartTooltipStyle}
                       />
                       <Bar dataKey="stockValue" radius={[0, 4, 4, 0]}>
@@ -277,7 +278,7 @@ export default function Reports() {
                 <div className="grid grid-cols-3 gap-4 mt-4">
                   <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{stockData.totalProducts}</p><p className="text-sm text-muted-foreground">Total de Produtos</p></div>
                   <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{stockData.lowStock}</p><p className="text-sm text-muted-foreground">Stock Baixo</p></div>
-                  <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{stockData.totalValue.toFixed(2)} MTN</p><p className="text-sm text-muted-foreground">Valor Total</p></div>
+                  <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{formatCurrency(stockData.totalValue)}</p><p className="text-sm text-muted-foreground">Valor Total</p></div>
                 </div>
               </CardContent>
             </Card>
@@ -294,7 +295,7 @@ export default function Reports() {
                       <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fontSize: 12 }} axisLine={false} tickLine={false} width={40} />
                       <Tooltip
-                        formatter={(value: number) => [`${value.toFixed(2)} MTN`, "Faturado"]}
+                        formatter={(value: number) => [formatCurrency(value), "Faturado"]}
                         contentStyle={chartTooltipStyle}
                       />
                       <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
@@ -334,10 +335,10 @@ export default function Reports() {
                         <TableRow key={row.clientId}>
                           <TableCell className="font-medium">{row.clientName}</TableCell>
                           <TableCell>{row.invoiceCount}</TableCell>
-                          <TableCell>{row.totalInvoiced.toFixed(2)} MTN</TableCell>
-                          <TableCell className="text-success">{row.totalReceived.toFixed(2)} MTN</TableCell>
+                          <TableCell>{formatCurrency(row.totalInvoiced)}</TableCell>
+                          <TableCell className="text-success">{formatCurrency(row.totalReceived)}</TableCell>
                           <TableCell className={row.balance > 0.01 ? "text-warning" : ""}>
-                            {row.balance.toFixed(2)} MTN
+                            {formatCurrency(row.balance)}
                           </TableCell>
                         </TableRow>
                       ))

@@ -10,8 +10,9 @@ import { paymentMethodLabel } from "@/lib/statusLabels";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { printAs } from "@/lib/printDocument";
-import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentHeader } from "@/components/DocumentHeader";
 import { DocumentBankDetails } from "@/components/DocumentBankDetails";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { Payment } from "@/types";
 
 export default function ReceiptDetails() {
@@ -59,6 +60,9 @@ export default function ReceiptDetails() {
       .filter((name): name is string => Boolean(name))
   )];
 
+  const distinctClientIds = [...new Set(receipt.documents.map((alloc) => alloc.document?.clientId).filter(Boolean))];
+  const singleClient = distinctClientIds.length === 1 ? clients.find((c) => c.id === distinctClientIds[0]) : undefined;
+
   const receiptFilename = `Recibo ${receipt.receiptCode} - ${clientNames.join(", ") || "cliente"}`;
 
   const handlePrint = () => printAs(receiptFilename);
@@ -84,7 +88,7 @@ export default function ReceiptDetails() {
                 {receipt.kind === "reversal" && <Badge variant="destructive">Estorno</Badge>}
               </h1>
               <p className="text-muted-foreground">
-                Data: {new Date(receipt.paymentDate).toLocaleDateString()}
+                Data: {formatDate(receipt.paymentDate)}
               </p>
             </div>
           </div>
@@ -101,23 +105,26 @@ export default function ReceiptDetails() {
         </div>
 
         <Card className="print:shadow-none print:border-none">
-          <CardHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CompanyLetterhead />
-              <div className="text-right">
-                <h3 className="text-lg font-semibold">Recibo passado a:</h3>
-                <p className="text-sm">{clientNames.join(", ") || "—"}</p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <CardHeader className="pb-3">
+            <DocumentHeader
+              clientLabel="Recibo passado a"
+              client={{
+                name: clientNames.join(", ") || "—",
+                address: singleClient?.address,
+                nuit: singleClient?.nuit,
+                phone: singleClient?.phone,
+                email: singleClient?.email,
+              }}
+            />
+            <Separator className="my-3" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
                 <span className="font-medium">Código:</span>
                 <p>{receipt.receiptCode}</p>
               </div>
               <div>
                 <span className="font-medium">Data:</span>
-                <p>{new Date(receipt.paymentDate).toLocaleDateString()}</p>
+                <p>{formatDate(receipt.paymentDate)}</p>
               </div>
               <div>
                 <span className="font-medium">Forma de Pagamento:</span>
@@ -138,7 +145,7 @@ export default function ReceiptDetails() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Documento</th>
@@ -148,23 +155,23 @@ export default function ReceiptDetails() {
                   </tr>
                 </thead>
                 <tbody>
-                  {receipt.documents.map((alloc) => (
-                    <tr key={alloc.documentId} className="border-b">
-                      <td className="py-2">
+                  {receipt.documents.map((alloc, index) => (
+                    <tr key={alloc.documentId} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
+                      <td className="py-2 px-2">
                         <Link to={`/invoice/${alloc.documentId}`} className="text-primary hover:underline">
                           {alloc.document?.code ?? alloc.documentId}
                         </Link>
                       </td>
-                      <td className="py-2">{alloc.document?.type === "FACT" ? "Fatura" : "Cotação"}</td>
-                      <td className="text-right py-2">{alloc.document?.total?.toFixed(2) ?? "—"} MTN</td>
-                      <td className="text-right py-2">{alloc.amount.toFixed(2)} MTN</td>
+                      <td className="py-2 px-2">{alloc.document?.type === "FACT" ? "Fatura" : "Cotação"}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(alloc.document?.total)}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(alloc.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="mt-6 space-y-2">
+            <div className="mt-6 space-y-2 text-sm">
               <Separator />
               <div
                 className={`flex justify-between text-lg font-semibold ${
@@ -172,16 +179,12 @@ export default function ReceiptDetails() {
                 }`}
               >
                 <span>{receipt.kind === "reversal" ? "Total Estornado:" : "Total Recebido:"}</span>
-                <span>{receipt.amount.toFixed(2)} MTN</span>
+                <span>{formatCurrency(receipt.amount)}</span>
               </div>
             </div>
 
             <div className="mt-8">
               <DocumentBankDetails />
-              <div className="text-sm text-muted-foreground">
-                <p>Obrigado pela sua preferência!</p>
-                <p>Este recibo foi gerado eletronicamente pelo sistema TS Sales.</p>
-              </div>
             </div>
           </CardContent>
         </Card>

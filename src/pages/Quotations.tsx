@@ -12,6 +12,7 @@ import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { DisplayStatus } from "@/types";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function Quotations() {
   const { getQuotations } = useData();
@@ -122,8 +123,8 @@ export default function Quotations() {
                     <TableRow key={quotation.id}>
                       <TableCell className="font-mono font-medium">{quotation.code}</TableCell>
                       <TableCell>{quotation.clientName}</TableCell>
-                      <TableCell>{new Date(quotation.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{quotation.total.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatDate(quotation.createdAt)}</TableCell>
+                      <TableCell>{formatCurrency(quotation.total)}</TableCell>
                       <TableCell>
                         <Badge variant={documentStatusVariant(quotation.displayStatus)}>
                           {documentStatusLabel("COT", quotation.displayStatus as DisplayStatus)}

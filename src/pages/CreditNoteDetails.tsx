@@ -8,7 +8,8 @@ import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { printAs } from "@/lib/printDocument";
-import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentHeader } from "@/components/DocumentHeader";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { CreditNote } from "@/types";
 
 export default function CreditNoteDetails() {
@@ -70,7 +71,7 @@ export default function CreditNoteDetails() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">Nota de Crédito {creditNote.code}</h1>
               <p className="text-muted-foreground">
-                Data: {new Date(creditNote.createdAt).toLocaleDateString()}
+                Data: {formatDate(creditNote.createdAt)}
               </p>
             </div>
           </div>
@@ -87,31 +88,26 @@ export default function CreditNoteDetails() {
         </div>
 
         <Card className="print:shadow-none print:border-none">
-          <CardHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CompanyLetterhead />
-              <div className="text-right">
-                <h3 className="text-lg font-semibold">Emitida a:</h3>
-                <p className="text-sm">
-                  {creditNote.document.client.name}
-                  <br />
-                  {creditNote.document.client.address}
-                  <br />
-                  Tel: {creditNote.document.client.phone}
-                  <br />
-                  Email: {creditNote.document.client.email}
-                </p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <CardHeader className="pb-3">
+            <DocumentHeader
+              clientLabel="Emitida a"
+              client={{
+                name: creditNote.document.client.name,
+                address: creditNote.document.client.address,
+                nuit: creditNote.document.client.nuit,
+                phone: creditNote.document.client.phone,
+                email: creditNote.document.client.email,
+              }}
+            />
+            <Separator className="my-3" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
                 <span className="font-medium">Número:</span>
                 <p>{creditNote.code}</p>
               </div>
               <div>
                 <span className="font-medium">Data:</span>
-                <p>{new Date(creditNote.createdAt).toLocaleDateString()}</p>
+                <p>{formatDate(creditNote.createdAt)}</p>
               </div>
               <div>
                 <span className="font-medium">Fatura Anulada:</span>
@@ -135,7 +131,7 @@ export default function CreditNoteDetails() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Produto/Serviço</th>
@@ -145,23 +141,23 @@ export default function CreditNoteDetails() {
                   </tr>
                 </thead>
                 <tbody>
-                  {creditNote.document.items.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-2">{item.description}</td>
-                      <td className="text-right py-2">{item.quantity}</td>
-                      <td className="text-right py-2">{item.unitPrice.toFixed(2)} MTN</td>
-                      <td className="text-right py-2">{item.lineTotal.toFixed(2)} MTN</td>
+                  {creditNote.document.items.map((item, index) => (
+                    <tr key={item.id} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
+                      <td className="py-2 px-2">{item.description}</td>
+                      <td className="text-right py-2 px-2">{item.quantity}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(item.unitPrice)}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(item.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="mt-6 space-y-2">
+            <div className="mt-6 space-y-2 text-sm">
               <Separator />
               <div className="flex justify-between text-lg font-semibold text-destructive">
                 <span>Total Anulado:</span>
-                <span>{creditNote.total.toFixed(2)} MTN</span>
+                <span>{formatCurrency(creditNote.total)}</span>
               </div>
             </div>
 
@@ -170,7 +166,6 @@ export default function CreditNoteDetails() {
                 Este documento anula integralmente a fatura {creditNote.document.code}. O stock vendido foi reposto
                 e, caso tenha havido pagamentos, o valor recebido foi estornado.
               </p>
-              <p>Esta nota de crédito foi gerada eletronicamente pelo sistema TS Sales.</p>
             </div>
           </CardContent>
         </Card>

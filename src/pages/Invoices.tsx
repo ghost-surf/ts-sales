@@ -12,6 +12,7 @@ import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { DisplayStatus } from "@/types";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function Invoices() {
   const { getInvoices } = useData();
@@ -61,7 +62,7 @@ export default function Invoices() {
               <div className="flex items-center space-x-2">
                 <Receipt className="h-5 w-5 text-success" />
                 <div>
-                  <p className="text-2xl font-bold">{totalPaid.toFixed(2)} MTN</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalPaid)}</p>
                   <p className="text-sm text-muted-foreground">Total Recebido</p>
                 </div>
               </div>
@@ -72,7 +73,7 @@ export default function Invoices() {
               <div className="flex items-center space-x-2">
                 <Receipt className="h-5 w-5 text-warning" />
                 <div>
-                  <p className="text-2xl font-bold">{totalPending.toFixed(2)} MTN</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalPending)}</p>
                   <p className="text-sm text-muted-foreground">Por Receber</p>
                 </div>
               </div>
@@ -135,8 +136,8 @@ export default function Invoices() {
                     <TableRow key={invoice.id}>
                       <TableCell className="font-mono font-medium">{invoice.code}</TableCell>
                       <TableCell>{invoice.clientName}</TableCell>
-                      <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{invoice.total.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.total)}</TableCell>
                       <TableCell>
                         <Badge variant={documentStatusVariant(invoice.displayStatus)}>
                           {documentStatusLabel("FACT", invoice.displayStatus as DisplayStatus)}

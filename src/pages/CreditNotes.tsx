@@ -9,6 +9,7 @@ import { useData } from "@/contexts/DataContext";
 import { normalizeSearch } from "@/lib/utils";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function CreditNotes() {
   const { creditNotes } = useData();
@@ -50,7 +51,7 @@ export default function CreditNotes() {
               <div className="flex items-center space-x-2">
                 <Ban className="h-5 w-5 text-destructive" />
                 <div>
-                  <p className="text-2xl font-bold">{totalAnulado.toFixed(2)} MTN</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalAnulado)}</p>
                   <p className="text-sm text-muted-foreground">Valor Total Anulado</p>
                 </div>
               </div>
@@ -103,8 +104,8 @@ export default function CreditNotes() {
                         </Link>
                       </TableCell>
                       <TableCell>{nc.document.client.name}</TableCell>
-                      <TableCell>{new Date(nc.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-destructive font-medium">{nc.total.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatDate(nc.createdAt)}</TableCell>
+                      <TableCell className="text-destructive font-medium">{formatCurrency(nc.total)}</TableCell>
                       <TableCell>{nc.operator?.name ?? "—"}</TableCell>
                       <TableCell className="text-right">
                         <Link to={`/credit-note/${nc.id}`} className="text-primary hover:underline text-sm">

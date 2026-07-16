@@ -13,6 +13,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatDate } from "@/lib/format";
 
 export default function ServiceCategories() {
   const { getServiceCategories, addCategory, updateCategory, deleteCategory } = useData();
@@ -178,7 +179,7 @@ export default function ServiceCategories() {
                         {category.name}
                       </TableCell>
                       <TableCell>
-                        {new Date(category.createdAt).toLocaleDateString()}
+                        {formatDate(category.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

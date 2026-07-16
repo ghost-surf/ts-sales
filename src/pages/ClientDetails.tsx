@@ -18,6 +18,7 @@ import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel, documentStatusVariant, paymentMethodLabel } from "@/lib/statusLabels";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function ClientDetails() {
   const { id } = useParams();
@@ -72,7 +73,7 @@ export default function ClientDetails() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{client.name}</h1>
             <p className="text-muted-foreground">
-              Cliente desde {new Date(client.createdAt).toLocaleDateString()}
+              Cliente desde {formatDate(client.createdAt)}
             </p>
           </div>
         </div>
@@ -109,7 +110,7 @@ export default function ClientDetails() {
               <div className="flex items-center space-x-2">
                 <Wallet className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-2xl font-bold">{totalInvoiced.toFixed(2)} MTN</p>
+                  <p className="text-2xl font-bold">{formatCurrency(totalInvoiced)}</p>
                   <p className="text-sm text-muted-foreground">Total Faturado</p>
                 </div>
               </div>
@@ -120,7 +121,7 @@ export default function ClientDetails() {
               <div className="flex items-center space-x-2">
                 <ReceiptIcon className="h-5 w-5 text-success" />
                 <div>
-                  <p className="text-2xl font-bold text-success">{totalPaid.toFixed(2)} MTN</p>
+                  <p className="text-2xl font-bold text-success">{formatCurrency(totalPaid)}</p>
                   <p className="text-sm text-muted-foreground">Total Recebido</p>
                 </div>
               </div>
@@ -131,7 +132,7 @@ export default function ClientDetails() {
               <div className="flex items-center space-x-2">
                 <AlertCircle className="h-5 w-5 text-warning" />
                 <div>
-                  <p className="text-2xl font-bold text-warning">{totalPending.toFixed(2)} MTN</p>
+                  <p className="text-2xl font-bold text-warning">{formatCurrency(totalPending)}</p>
                   <p className="text-sm text-muted-foreground">Saldo em Aberto</p>
                 </div>
               </div>
@@ -178,9 +179,9 @@ export default function ClientDetails() {
                           {invoice.code}
                         </Link>
                       </TableCell>
-                      <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{invoice.total.toFixed(2)} MTN</TableCell>
-                      <TableCell>{invoice.paidAmount.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.total)}</TableCell>
+                      <TableCell>{formatCurrency(invoice.paidAmount)}</TableCell>
                       <TableCell>
                         <Badge variant={documentStatusVariant(invoice.displayStatus)}>
                           {documentStatusLabel("FACT", invoice.displayStatus)}
@@ -230,8 +231,8 @@ export default function ClientDetails() {
                           {quotation.code}
                         </Link>
                       </TableCell>
-                      <TableCell>{new Date(quotation.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>{quotation.total.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatDate(quotation.createdAt)}</TableCell>
+                      <TableCell>{formatCurrency(quotation.total)}</TableCell>
                       <TableCell>
                         <Badge variant={documentStatusVariant(quotation.displayStatus)}>
                           {documentStatusLabel("COT", quotation.displayStatus)}
@@ -281,13 +282,13 @@ export default function ClientDetails() {
                           {receipt.receiptCode}
                         </Link>
                       </TableCell>
-                      <TableCell>{new Date(receipt.paymentDate).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDate(receipt.paymentDate)}</TableCell>
                       <TableCell>
                         <Badge variant={receipt.method === "numerario" ? "default" : "secondary"}>
                           {paymentMethodLabel(receipt.method)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{receipt.amount.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatCurrency(receipt.amount)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

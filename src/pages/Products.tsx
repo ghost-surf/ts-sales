@@ -18,6 +18,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency } from "@/lib/format";
 import { unitLabel } from "@/lib/statusLabels";
 import { UnitType } from "@/types";
 
@@ -229,7 +230,7 @@ export default function Products() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="price">Preço (MTN)</Label>
+                      <Label htmlFor="price">Preço (MT)</Label>
                       <Input
                         id="price"
                         type="number"
@@ -335,7 +336,7 @@ export default function Products() {
             <CardContent className="pt-6">
               <div>
                 <p className="text-2xl font-bold">
-                  {products.reduce((sum, p) => sum + (p.price * p.stock), 0).toFixed(2)} MTN
+                  {formatCurrency(products.reduce((sum, p) => sum + (p.price * p.stock), 0))}
                 </p>
                 <p className="text-sm text-muted-foreground">Valor Total Stock</p>
               </div>
@@ -413,7 +414,7 @@ export default function Products() {
                       <TableCell>
                         <Badge variant="secondary">{product.category}</Badge>
                       </TableCell>
-                      <TableCell>{product.price.toFixed(2)} MTN</TableCell>
+                      <TableCell>{formatCurrency(product.price)}</TableCell>
                       <TableCell>
                         <span className={product.stock <= product.lowStockThreshold ? "text-warning font-medium" : ""}>
                           {product.stock} {product.unit}

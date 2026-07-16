@@ -20,6 +20,7 @@ import { paymentMethodLabel } from "@/lib/statusLabels";
 import { Payment, PaymentMethod } from "@/types";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function Receipts() {
   const { payments, documents, registerPayment } = useData();
@@ -189,7 +190,7 @@ export default function Receipts() {
                               {invoice.code} · {invoice.clientName}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Total: {invoice.total.toFixed(2)} MTN · Saldo: {invoice.remaining.toFixed(2)} MTN
+                              Total: {formatCurrency(invoice.total)} · Saldo: {formatCurrency(invoice.remaining)}
                             </p>
                           </div>
                           {checked && (
@@ -243,7 +244,7 @@ export default function Receipts() {
                     <p className="text-sm text-muted-foreground">
                       {selectedIds.length} fatura(s) selecionada(s)
                     </p>
-                    <p className="text-lg font-semibold">{totalAmount.toFixed(2)} MTN</p>
+                    <p className="text-lg font-semibold">{formatCurrency(totalAmount)}</p>
                   </div>
                   <div className="flex space-x-2">
                     <Button onClick={handleCreateReceipt} disabled={submitting || selectedIds.length === 0}>
@@ -278,7 +279,7 @@ export default function Receipts() {
                 <Receipt className="h-5 w-5 text-success" />
                 <div>
                   <p className="text-2xl font-bold">
-                    {payments.reduce((sum, r) => sum + r.amount, 0).toFixed(2)} MTN
+                    {formatCurrency(payments.reduce((sum, r) => sum + r.amount, 0))}
                   </p>
                   <p className="text-sm text-muted-foreground">Valor Total Recebido</p>
                 </div>
@@ -369,10 +370,10 @@ export default function Receipts() {
                       <TableCell
                         className={`font-mono font-medium ${receipt.kind === "reversal" ? "text-destructive" : ""}`}
                       >
-                        {receipt.amount.toFixed(2)} MTN
+                        {formatCurrency(receipt.amount)}
                       </TableCell>
                       <TableCell>
-                        {new Date(receipt.paymentDate).toLocaleDateString()}
+                        {formatDate(receipt.paymentDate)}
                       </TableCell>
                       <TableCell>{receipt.operator?.name ?? "—"}</TableCell>
                       <TableCell className="text-right">

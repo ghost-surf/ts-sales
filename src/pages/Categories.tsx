@@ -16,6 +16,7 @@ import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
 import { unitLabel } from "@/lib/statusLabels";
+import { formatDate } from "@/lib/format";
 import { UnitType } from "@/types";
 
 export default function Categories() {
@@ -216,7 +217,7 @@ export default function Categories() {
                         <Badge variant="secondary">{category.unit ? unitLabel(category.unit) : "—"}</Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(category.createdAt).toLocaleDateString()}
+                        {formatDate(category.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

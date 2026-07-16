@@ -16,6 +16,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatDate } from "@/lib/format";
 
 export default function Clients() {
   const { clients, addClient, updateClient, deleteClient } = useData();
@@ -322,7 +323,7 @@ export default function Clients() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(client.createdAt).toLocaleDateString()}
+                        {formatDate(client.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

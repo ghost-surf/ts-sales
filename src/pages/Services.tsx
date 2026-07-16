@@ -15,6 +15,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function Services() {
   const { services, getServiceCategories, addService, updateService, deleteService } = useData();
@@ -176,7 +177,7 @@ export default function Services() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="price">Preço Unitário (MTN)</Label>
+                  <Label htmlFor="price">Preço Unitário (MT)</Label>
                   <Input
                     id="price"
                     type="number"
@@ -239,10 +240,10 @@ export default function Services() {
                         <Badge variant="secondary">{service.category}</Badge>
                       </TableCell>
                       <TableCell className="font-mono">
-                        {service.price.toFixed(2)} MTN
+                        {formatCurrency(service.price)}
                       </TableCell>
                       <TableCell>
-                        {new Date(service.createdAt).toLocaleDateString()}
+                        {formatDate(service.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

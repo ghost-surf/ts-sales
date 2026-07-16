@@ -15,8 +15,9 @@ import { useData } from "@/contexts/DataContext";
 import { documentStatusLabel } from "@/lib/statusLabels";
 import { ApiError } from "@/lib/api";
 import { printAs } from "@/lib/printDocument";
-import { CompanyLetterhead } from "@/components/CompanyLetterhead";
+import { DocumentHeader } from "@/components/DocumentHeader";
 import { DocumentBankDetails } from "@/components/DocumentBankDetails";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { AppDocument, PaymentMethod } from "@/types";
 
 export default function InvoiceDetails() {
@@ -170,7 +171,7 @@ export default function InvoiceDetails() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">Fatura {invoice.code}</h1>
               <p className="text-muted-foreground">
-                Data: {new Date(invoice.createdAt).toLocaleDateString()}
+                Data: {formatDate(invoice.createdAt)}
               </p>
             </div>
           </div>
@@ -257,7 +258,7 @@ export default function InvoiceDetails() {
                   </DialogHeader>
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Saldo em aberto: <span className="font-medium text-foreground">{remaining.toFixed(2)} MTN</span>
+                      Saldo em aberto: <span className="font-medium text-foreground">{formatCurrency(remaining)}</span>
                     </p>
                     <div>
                       <Label htmlFor="method">Forma de Pagamento</Label>
@@ -284,7 +285,7 @@ export default function InvoiceDetails() {
                       </div>
                     )}
                     <div>
-                      <Label htmlFor="amount">Valor (MTN)</Label>
+                      <Label htmlFor="amount">Valor (MT)</Label>
                       <Input
                         id="amount"
                         type="number"
@@ -314,32 +315,30 @@ export default function InvoiceDetails() {
 
         {/* Invoice Content */}
         <Card className="print:shadow-none print:border-none">
-          <CardHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <CompanyLetterhead />
-              <div className="text-right">
-                <h3 className="text-lg font-semibold">Faturar a:</h3>
-                <p className="text-sm">
-                  {invoice.clientName}<br />
-                  {client?.address}<br />
-                  Tel: {client?.phone}<br />
-                  Email: {client?.email}
-                </p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <CardHeader className="pb-3">
+            <DocumentHeader
+              clientLabel="Faturar a"
+              client={{
+                name: invoice.clientName,
+                address: client?.address,
+                nuit: client?.nuit,
+                phone: client?.phone,
+                email: client?.email,
+              }}
+            />
+            <Separator className="my-3" />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
                 <span className="font-medium">Número:</span>
                 <p>{invoice.code}</p>
               </div>
               <div>
                 <span className="font-medium">Data:</span>
-                <p>{new Date(invoice.createdAt).toLocaleDateString()}</p>
+                <p>{formatDate(invoice.createdAt)}</p>
               </div>
               <div>
                 <span className="font-medium">Vencimento:</span>
-                <p>{invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "—"}</p>
+                <p>{formatDate(invoice.dueDate)}</p>
               </div>
               <div>
                 <span className="font-medium">Status:</span>
@@ -360,7 +359,7 @@ export default function InvoiceDetails() {
           <CardContent>
             {/* Items Table */}
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Produto/Serviço</th>
@@ -370,12 +369,12 @@ export default function InvoiceDetails() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invoice.items.map((item) => (
-                    <tr key={item.id} className="border-b">
-                      <td className="py-2">{item.description}</td>
-                      <td className="text-right py-2">{item.quantity}</td>
-                      <td className="text-right py-2">{item.unitPrice.toFixed(2)} MTN</td>
-                      <td className="text-right py-2">{item.lineTotal.toFixed(2)} MTN</td>
+                  {invoice.items.map((item, index) => (
+                    <tr key={item.id} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
+                      <td className="py-2 px-2">{item.description}</td>
+                      <td className="text-right py-2 px-2">{item.quantity}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(item.unitPrice)}</td>
+                      <td className="text-right py-2 px-2">{formatCurrency(item.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -383,36 +382,36 @@ export default function InvoiceDetails() {
             </div>
 
             {/* Totals */}
-            <div className="mt-6 space-y-2">
+            <div className="mt-6 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>{(invoice.subtotalProducts + invoice.subtotalServices).toFixed(2)} MTN</span>
+                <span>{formatCurrency(invoice.subtotalProducts + invoice.subtotalServices)}</span>
               </div>
               {invoice.discountValue > 0 && (
                 <div className="flex justify-between">
                   <span>Desconto:</span>
-                  <span>-{invoice.discountValue.toFixed(2)} MTN</span>
+                  <span>{formatCurrency(-invoice.discountValue)}</span>
                 </div>
               )}
               <div className="flex justify-between">
                 <span>Imposto:</span>
-                <span>{invoice.vatValue.toFixed(2)} MTN</span>
+                <span>{formatCurrency(invoice.vatValue)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-lg font-semibold">
                 <span>Total:</span>
-                <span>{invoice.total.toFixed(2)} MTN</span>
+                <span>{formatCurrency(invoice.total)}</span>
               </div>
               {invoice.paidAmount > 0 && (
                 <>
-                  <div className="flex justify-between text-sm text-success">
+                  <div className="flex justify-between text-success">
                     <span>Pago:</span>
-                    <span>{invoice.paidAmount.toFixed(2)} MTN</span>
+                    <span>{formatCurrency(invoice.paidAmount)}</span>
                   </div>
                   {remaining > 0.01 && (
-                    <div className="flex justify-between text-sm text-warning">
+                    <div className="flex justify-between text-warning">
                       <span>Saldo em aberto:</span>
-                      <span>{remaining.toFixed(2)} MTN</span>
+                      <span>{formatCurrency(remaining)}</span>
                     </div>
                   )}
                 </>
@@ -421,10 +420,6 @@ export default function InvoiceDetails() {
 
             <div className="mt-8">
               <DocumentBankDetails />
-              <div className="text-sm text-muted-foreground">
-                <p>Obrigado pela sua preferência!</p>
-                <p>Esta fatura foi gerada eletronicamente pelo sistema TS Sales.</p>
-              </div>
             </div>
           </CardContent>
         </Card>

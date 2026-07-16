@@ -25,6 +25,7 @@ import { useData } from "@/contexts/DataContext";
 import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { normalizeSearch } from "@/lib/utils";
+import { formatCurrency } from "@/lib/format";
 
 interface SaleItem {
   id: number;
@@ -181,7 +182,7 @@ export default function Sales() {
     const clientName = clients.find((c) => c.id === selectedClient)?.name ?? "";
     const ok = await confirm({
       title: documentType === "invoice" ? "Criar fatura?" : "Criar cotação?",
-      description: `${documentType === "invoice" ? "Esta fatura" : "Esta cotação"} será criada para ${clientName}, no valor de ${total.toFixed(2)} MTN.${documentType === "invoice" ? " O stock dos produtos será deduzido." : ""}`,
+      description: `${documentType === "invoice" ? "Esta fatura" : "Esta cotação"} será criada para ${clientName}, no valor de ${formatCurrency(total)}.${documentType === "invoice" ? " O stock dos produtos será deduzido." : ""}`,
       confirmLabel: "Criar",
     });
     if (!ok) return;
@@ -377,7 +378,7 @@ export default function Sales() {
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {product.price.toFixed(2)} MTN · Stock: {product.stock} {product.unit}
+                                {formatCurrency(product.price)} · Stock: {product.stock} {product.unit}
                               </p>
                             </div>
                             <Input
@@ -438,7 +439,7 @@ export default function Sales() {
                                   {service.category}
                                 </Badge>
                               </div>
-                              <p className="text-xs text-muted-foreground">{service.price.toFixed(2)} MTN</p>
+                              <p className="text-xs text-muted-foreground">{formatCurrency(service.price)}</p>
                             </div>
                             <Button size="sm" className="h-8 w-8 p-0 ml-2" onClick={() => addServiceItem(service)}>
                               <Plus className="h-4 w-4" />
@@ -466,12 +467,12 @@ export default function Sales() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{item.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {item.unitPrice.toFixed(2)} MTN
+                              {formatCurrency(item.unitPrice)}
                               {item.itemType === "product" && ` x ${item.quantity}`}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2 ml-2">
-                            <span className="text-sm font-medium">{item.lineTotal.toFixed(2)} MTN</span>
+                            <span className="text-sm font-medium">{formatCurrency(item.lineTotal)}</span>
                             <Button size="sm" variant="destructive" className="h-7 w-7 p-0" onClick={() => removeItem(item.id)}>
                               ×
                             </Button>
@@ -498,16 +499,16 @@ export default function Sales() {
                 <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Produtos:</span>
-                    <span>{subtotalProducts.toFixed(2)} MTN</span>
+                    <span>{formatCurrency(subtotalProducts)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Serviços:</span>
-                    <span>{subtotalServices.toFixed(2)} MTN</span>
+                    <span>{formatCurrency(subtotalServices)}</span>
                   </div>
                   <hr />
                   <div className="flex justify-between font-medium">
                     <span>Subtotal:</span>
-                    <span>{subtotal.toFixed(2)} MTN</span>
+                    <span>{formatCurrency(subtotal)}</span>
                   </div>
                 </div>
 
@@ -519,7 +520,7 @@ export default function Sales() {
                 {discountEnabled && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Desconto:</span>
-                    <span>-{discountValue.toFixed(2)} MTN</span>
+                    <span>{formatCurrency(-discountValue)}</span>
                   </div>
                 )}
 
@@ -551,14 +552,14 @@ export default function Sales() {
                 {vatEnabled && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Imposto:</span>
-                    <span>{vatAmount.toFixed(2)} MTN</span>
+                    <span>{formatCurrency(vatAmount)}</span>
                   </div>
                 )}
 
                 <hr className="border-t-2" />
                 <div className="flex justify-between text-lg font-bold">
                   <span>Total:</span>
-                  <span>{total.toFixed(2)} MTN</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
 
                 <Button

@@ -11,6 +11,7 @@ import { useData } from "@/contexts/DataContext";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
 import { normalizeSearch } from "@/lib/utils";
+import { formatDateTime } from "@/lib/format";
 
 export default function StockMovements() {
   const { stockMovements, refreshStockMovements } = useData();
@@ -135,7 +136,7 @@ export default function StockMovements() {
                   {pageItems.map((movement) => (
                     <TableRow key={movement.id}>
                       <TableCell className="whitespace-nowrap">
-                        {new Date(movement.createdAt).toLocaleString()}
+                        {formatDateTime(movement.createdAt)}
                       </TableCell>
                       <TableCell className="font-medium">{movement.product.name}</TableCell>
                       <TableCell>

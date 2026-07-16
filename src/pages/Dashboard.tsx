@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "@/lib/api";
 import { documentStatusLabel } from "@/lib/statusLabels";
+import { formatCurrency, formatDate } from "@/lib/format";
 import {
   TrendingUp,
   Package,
@@ -104,7 +105,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
             title="Vendas Hoje"
-            value={`${summary.todaySales.toFixed(2)} MTN`}
+            value={formatCurrency(summary.todaySales)}
             subtitle={`${summary.todayInvoicesCount} faturas pagas`}
             icon={Euro}
             variant="success"
@@ -161,7 +162,7 @@ export default function Dashboard() {
                       width={40}
                     />
                     <Tooltip
-                      formatter={(value: number) => [`${value.toFixed(2)} MTN`, "Vendas"]}
+                      formatter={(value: number) => [formatCurrency(value), "Vendas"]}
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
@@ -207,11 +208,11 @@ export default function Dashboard() {
                       </Link>
                       <p className="text-sm text-muted-foreground">{invoice.client?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(invoice.createdAt).toLocaleDateString()}
+                        {formatDate(invoice.createdAt)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-foreground">{invoice.total.toFixed(2)} MTN</p>
+                      <p className="font-medium text-foreground">{formatCurrency(invoice.total)}</p>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
                           invoice.displayStatus === "paid"
@@ -256,11 +257,11 @@ export default function Dashboard() {
                       </Link>
                       <p className="text-sm text-muted-foreground">{quotation.client?.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(quotation.createdAt).toLocaleDateString()}
+                        {formatDate(quotation.createdAt)}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-foreground">{quotation.total.toFixed(2)} MTN</p>
+                      <p className="font-medium text-foreground">{formatCurrency(quotation.total)}</p>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
                           quotation.displayStatus === "accepted"

@@ -15,6 +15,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { ApiError } from "@/lib/api";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
+import { formatDate } from "@/lib/format";
 
 export default function UsersPage() {
   const { users, addUser, updateUser, deleteUser } = useData();
@@ -257,7 +258,7 @@ export default function UsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString()}
+                        {formatDate(user.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">

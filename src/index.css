@@ -138,4 +138,12 @@
     overflow: visible !important;
     height: auto !important;
   }
+
+  /* Browsers strip background colors on print by default (to save ink) unless
+     told otherwise — needed so the striped table rows actually show up on paper/PDF. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
 }
