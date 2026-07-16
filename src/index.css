@@ -130,6 +130,14 @@
   }
 }
 
+/* Sets the page margin used when printing/exporting to PDF, so the document
+   content starts with proper whitespace from the paper edge instead of bleeding
+   to the corner (browsers otherwise default to little/no margin on some setups). */
+@page {
+  size: A4;
+  margin: 0mm 0mm;
+}
+
 /* Printing a document (invoice/quotation/receipt) should only render the
    printable card, not the app shell (sidebar, header, page action bar). */
 @media print {
