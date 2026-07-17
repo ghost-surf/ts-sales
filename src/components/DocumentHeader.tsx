@@ -44,7 +44,7 @@ export function DocumentHeader({ client, clientLabel = "Cliente" }: DocumentHead
         </div>
       </div>
 
-      <div className="text-right">
+      <div className="text-left">
         <h3 className="text-sm font-semibold mb-0.5">{clientLabel}</h3>
         {client ? (
           <div className="text-muted-foreground space-y-0">
