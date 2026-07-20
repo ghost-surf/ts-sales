@@ -299,7 +299,7 @@ export default function Products() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
@@ -332,16 +332,18 @@ export default function Products() {
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div>
-                <p className="text-2xl font-bold">
-                  {formatCurrency(products.reduce((sum, p) => sum + (p.price * p.stock), 0))}
-                </p>
-                <p className="text-sm text-muted-foreground">Valor Total Stock</p>
-              </div>
-            </CardContent>
-          </Card>
+          {isAdmin && (
+            <Card>
+              <CardContent className="pt-6">
+                <div>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(products.reduce((sum, p) => sum + (p.price * p.stock), 0))}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Valor Total Stock</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Filters and Search */}

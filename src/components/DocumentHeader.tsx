@@ -22,8 +22,8 @@ export function DocumentHeader({ client, clientLabel = "Cliente" }: DocumentHead
   const { companySettings } = useData();
 
   return (
-    <div className="grid grid-cols-3 gap-3 text-xs leading-tight">
-      <div className="flex items-center">
+    <div className="grid grid-cols-9 gap-3 text-xs leading-tight">
+      <div className="col-span-2 flex items-center">
         {companySettings?.logo && (
           <img
             src={companySettings.logo}
@@ -33,7 +33,7 @@ export function DocumentHeader({ client, clientLabel = "Cliente" }: DocumentHead
         )}
       </div>
 
-      <div>
+      <div className="col-span-4">
         <h2 className="text-sm font-semibold mb-0.5">{companySettings?.name ?? "Minha Empresa"}</h2>
         <div className="text-muted-foreground space-y-0">
           {companySettings?.address && <p>{companySettings.address}</p>}
@@ -44,7 +44,7 @@ export function DocumentHeader({ client, clientLabel = "Cliente" }: DocumentHead
         </div>
       </div>
 
-      <div className="text-left">
+      <div className="col-span-3 text-left">
         <h3 className="text-sm font-semibold mb-0.5">{clientLabel}</h3>
         {client ? (
           <div className="text-muted-foreground space-y-0">
