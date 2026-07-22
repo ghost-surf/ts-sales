@@ -61,7 +61,7 @@ export default function Products() {
           name: formData.name,
           categoryId: formData.categoryId,
           price: parseFloat(formData.price),
-          stock: parseInt(formData.stock) || 0,
+          stock: parseFloat(formData.stock) || 0,
           lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
           unit: formData.unit,
           description: formData.description,
@@ -76,7 +76,7 @@ export default function Products() {
           name: formData.name,
           categoryId: formData.categoryId,
           price: parseFloat(formData.price),
-          stock: parseInt(formData.stock) || 0,
+          stock: parseFloat(formData.stock) || 0,
           lowStockThreshold: parseFloat(formData.lowStockThreshold) || 0,
           unit: formData.unit,
           description: formData.description,
@@ -248,6 +248,7 @@ export default function Products() {
                         id="stock"
                         type="number"
                         min="0"
+                        step={formData.unit === "pcs" ? "1" : "0.01"}
                         value={formData.stock}
                         onChange={(e) => setFormData({...formData, stock: e.target.value})}
                         placeholder="0"
@@ -278,6 +279,7 @@ export default function Products() {
                         id="lowStockThreshold"
                         type="number"
                         min="0"
+                        step={formData.unit === "pcs" ? "1" : "0.01"}
                         value={formData.lowStockThreshold}
                         onChange={(e) => setFormData({...formData, lowStockThreshold: e.target.value})}
                         placeholder="10"

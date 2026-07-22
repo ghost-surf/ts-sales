@@ -385,7 +385,8 @@ export default function Sales() {
                               type="number"
                               placeholder="Qtd"
                               className="w-16 h-8 text-sm ml-2"
-                              min="1"
+                              min={product.unit === "pcs" ? "1" : "0.01"}
+                              step={product.unit === "pcs" ? "1" : "0.01"}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   const quantity = Number((e.target as HTMLInputElement).value);
