@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,7 @@ export default function Sales() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [showNewClientForm, setShowNewClientForm] = useState(false);
   const [items, setItems] = useState<SaleItem[]>([]);
+  const serviceQtyInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const [vatEnabled, setVatEnabled] = useState(true);
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [selectedTaxId, setSelectedTaxId] = useState<string>("");
@@ -153,15 +154,17 @@ export default function Sales() {
     }]);
   };
 
-  const addServiceItem = (service: (typeof services)[number]) => {
+  const addServiceItem = (service: (typeof services)[number], quantity: number = 1) => {
+    if (quantity <= 0) return;
+
     setItems([...items, {
       id: Date.now(),
       itemType: "service",
       itemId: service.id,
       name: service.name,
       unitPrice: service.price,
-      quantity: 1,
-      lineTotal: service.price,
+      quantity,
+      lineTotal: service.price * quantity,
     }]);
   };
 
@@ -442,7 +445,31 @@ export default function Sales() {
                               </div>
                               <p className="text-xs text-muted-foreground">{formatCurrency(service.price)}</p>
                             </div>
-                            <Button size="sm" className="h-8 w-8 p-0 ml-2" onClick={() => addServiceItem(service)}>
+                            <Input
+                              ref={(el) => { serviceQtyInputs.current[service.id] = el; }}
+                              type="number"
+                              placeholder="Qtd"
+                              className="w-16 h-8 text-sm ml-2"
+                              min="1"
+                              step="1"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const quantity = Number((e.target as HTMLInputElement).value) || 1;
+                                  addServiceItem(service, quantity);
+                                  (e.target as HTMLInputElement).value = "";
+                                }
+                              }}
+                            />
+                            <Button
+                              size="sm"
+                              className="h-8 w-8 p-0 ml-2"
+                              onClick={() => {
+                                const input = serviceQtyInputs.current[service.id];
+                                const quantity = Number(input?.value) || 1;
+                                addServiceItem(service, quantity);
+                                if (input) input.value = "";
+                              }}
+                            >
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
@@ -469,7 +496,7 @@ export default function Sales() {
                             <p className="text-sm font-medium truncate">{item.name}</p>
                             <p className="text-xs text-muted-foreground">
                               {formatCurrency(item.unitPrice)}
-                              {item.itemType === "product" && ` x ${item.quantity}`}
+                              {item.quantity > 1 && ` x ${item.quantity}`}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2 ml-2">
