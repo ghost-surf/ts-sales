@@ -148,6 +148,7 @@ export default function ReceiptDetails() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-2">Item</th>
                     <th className="text-left py-2">Documento</th>
                     <th className="text-left py-2">Tipo</th>
                     <th className="text-right py-2">Total do Documento</th>
@@ -157,6 +158,7 @@ export default function ReceiptDetails() {
                 <tbody>
                   {receipt.documents.map((alloc, index) => (
                     <tr key={alloc.documentId} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
+                      <td className="py-2 px-2">{index + 1}</td>
                       <td className="py-2 px-2">
                         <Link to={`/invoice/${alloc.documentId}`} className="text-primary hover:underline">
                           {alloc.document?.code ?? alloc.documentId}

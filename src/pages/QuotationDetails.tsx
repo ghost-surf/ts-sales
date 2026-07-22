@@ -176,6 +176,7 @@ export default function QuotationDetails() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-2">Item</th>
                     <th className="text-left py-2">Produto/Serviço</th>
                     <th className="text-right py-2">Qtd</th>
                     <th className="text-right py-2">Preço Unit.</th>
@@ -185,6 +186,7 @@ export default function QuotationDetails() {
                 <tbody>
                   {quotation.items.map((item, index) => (
                     <tr key={item.id} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
+                      <td className="py-2 px-2">{index + 1}</td>
                       <td className="py-2 px-2">{item.description}</td>
                       <td className="text-right py-2 px-2">{item.quantity}</td>
                       <td className="text-right py-2 px-2">{formatCurrency(item.unitPrice)}</td>
