@@ -59,6 +59,7 @@ export async function list(query: ListDocumentsQuery) {
     where: { type: query.type, status: query.status, clientId: query.clientId },
     include: {
       client: { select: { id: true, name: true } },
+      items: true,
       paymentLinks: { select: { amount: true } },
       creditNote: { select: { id: true, code: true } },
     },

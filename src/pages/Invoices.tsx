@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Receipt, Search, FileText } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { DisplayStatus } from "@/types";
 import { usePagination } from "@/hooks/use-pagination";
@@ -16,6 +17,8 @@ import { formatCurrency, formatDate } from "@/lib/format";
 
 export default function Invoices() {
   const { getInvoices } = useData();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -45,7 +48,7 @@ export default function Invoices() {
           <p className="text-muted-foreground">Todas as faturas emitidas</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "md:grid-cols-3" : ""}`}>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
@@ -57,28 +60,32 @@ export default function Invoices() {
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <Receipt className="h-5 w-5 text-success" />
-                <div>
-                  <p className="text-2xl font-bold">{formatCurrency(totalPaid)}</p>
-                  <p className="text-sm text-muted-foreground">Total Recebido</p>
+          {isAdmin && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <Receipt className="h-5 w-5 text-success" />
+                  <div>
+                    <p className="text-2xl font-bold">{formatCurrency(totalPaid)}</p>
+                    <p className="text-sm text-muted-foreground">Total Recebido</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <Receipt className="h-5 w-5 text-warning" />
-                <div>
-                  <p className="text-2xl font-bold">{formatCurrency(totalPending)}</p>
-                  <p className="text-sm text-muted-foreground">Por Receber</p>
+              </CardContent>
+            </Card>
+          )}
+          {isAdmin && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <Receipt className="h-5 w-5 text-warning" />
+                  <div>
+                    <p className="text-2xl font-bold">{formatCurrency(totalPending)}</p>
+                    <p className="text-sm text-muted-foreground">Por Receber</p>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <Card>

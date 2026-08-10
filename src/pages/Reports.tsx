@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, FileText, Users, Package, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { DollarSign, FileText, Users, Package, Download, Receipt, TrendingUp, AlertTriangle } from "lucide-react";
 import { Bar, BarChart, Cell, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
@@ -138,6 +139,47 @@ export default function Reports() {
     newMonth: clients.filter((c) => new Date(c.createdAt) >= startOfMonth).length,
   };
 
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const monthlyPaidInvoices = useMemo(() => {
+    const [year, month] = selectedMonth.split("-").map(Number);
+    return documents.filter((d) => {
+      if (d.type !== "FACT" || d.status !== "paid") return false;
+      const date = new Date(d.createdAt);
+      return date.getFullYear() === year && date.getMonth() + 1 === month;
+    });
+  }, [documents, selectedMonth]);
+
+  const monthlyReport = useMemo(() => {
+    const netTotal = monthlyPaidInvoices.reduce(
+      (sum, d) => sum + (d.subtotalProducts + d.subtotalServices - d.discountValue),
+      0
+    );
+    const vatTotal = monthlyPaidInvoices.reduce((sum, d) => sum + d.vatValue, 0);
+
+    const productSales = new Map<string, number>();
+    for (const invoice of monthlyPaidInvoices) {
+      for (const item of invoice.items) {
+        if (item.itemType !== "product") continue;
+        productSales.set(item.description, (productSales.get(item.description) ?? 0) + item.quantity);
+      }
+    }
+    const topProducts = [...productSales.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, quantity]) => ({ name, quantity }));
+
+    return { netTotal, vatTotal, salesCount: monthlyPaidInvoices.length, topProducts };
+  }, [monthlyPaidInvoices]);
+
+  const lowStockProducts = useMemo(
+    () => products.filter((p) => p.stock <= p.lowStockThreshold).sort((a, b) => a.stock - b.stock),
+    [products]
+  );
+
   const handleExportReport = () => {
     toast({
       title: "Relatório Exportado",
@@ -212,6 +254,7 @@ export default function Reports() {
             <TabsTrigger value="sales">Vendas</TabsTrigger>
             <TabsTrigger value="inventory">Inventário</TabsTrigger>
             <TabsTrigger value="clients">Clientes</TabsTrigger>
+            <TabsTrigger value="monthly">Mensal</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sales">
@@ -361,6 +404,128 @@ export default function Reports() {
               <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{clientsData.activeMonth}</p><p className="text-sm text-muted-foreground">Clientes Ativos</p></div>
               <div className="text-center p-4 bg-muted/20 rounded-lg"><p className="text-lg font-semibold">{clientsData.newMonth}</p><p className="text-sm text-muted-foreground">Novos este Mês</p></div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="monthly" className="space-y-4">
+            <Card>
+              <CardHeader><CardTitle>Relatório Mensal</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
+                <div className="max-w-48">
+                  <Label>Mês</Label>
+                  <Input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center space-x-2">
+                        <DollarSign className="h-5 w-5 text-success" />
+                        <div>
+                          <p className="text-2xl font-bold">{formatCurrency(monthlyReport.netTotal)}</p>
+                          <p className="text-sm text-muted-foreground">Valor Líquido Total</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center space-x-2">
+                        <Receipt className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-2xl font-bold">{formatCurrency(monthlyReport.vatTotal)}</p>
+                          <p className="text-sm text-muted-foreground">Valor do IVA Total</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-5 w-5 text-info" />
+                        <div>
+                          <p className="text-2xl font-bold">{monthlyReport.salesCount}</p>
+                          <p className="text-sm text-muted-foreground">Quantidade de Vendas Feitas</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-success" />
+                      <CardTitle className="text-base">Produtos que Mais Saíram</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Produto</TableHead>
+                            <TableHead className="text-right">Qtd Vendida</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {monthlyReport.topProducts.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
+                                Sem vendas de produtos no mês selecionado
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            monthlyReport.topProducts.map((row) => (
+                              <TableRow key={row.name}>
+                                <TableCell className="font-medium">{row.name}</TableCell>
+                                <TableCell className="text-right">{row.quantity}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-warning" />
+                      <CardTitle className="text-base">Produtos com Baixo Stock</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Produto</TableHead>
+                            <TableHead className="text-right">Stock Atual</TableHead>
+                            <TableHead className="text-right">Limite</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {lowStockProducts.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                Nenhum produto com stock baixo
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            lowStockProducts.map((product) => (
+                              <TableRow key={product.id}>
+                                <TableCell className="font-medium">{product.name}</TableCell>
+                                <TableCell className="text-right text-warning">{product.stock}</TableCell>
+                                <TableCell className="text-right">{product.lowStockThreshold}</TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
