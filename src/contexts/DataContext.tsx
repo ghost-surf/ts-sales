@@ -170,6 +170,7 @@ interface DataContextType {
   createQuotation: (input: CreateDocumentInput) => Promise<AppDocument>;
   convertQuotationToInvoice: (quotationId: string) => Promise<AppDocument>;
   updateDocumentStatus: (id: string, status: DocumentStatus) => Promise<AppDocument>;
+  updateDocumentDates: (id: string, dates: { createdAt?: string; dueDate?: string | null }) => Promise<AppDocument>;
   fetchDocument: (id: string) => Promise<AppDocument>;
   getInvoices: () => AppDocument[];
   getQuotations: () => AppDocument[];
@@ -442,6 +443,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refreshStockSideEffects();
     return updated;
   };
+  const updateDocumentDates = async (id: string, dates: { createdAt?: string; dueDate?: string | null }) => {
+    const updated = mapDocument(await api.patch(`/documents/${id}/dates`, dates));
+    await refreshDocuments();
+    return updated;
+  };
   const fetchDocument = async (id: string) => mapDocument(await api.get(`/documents/${id}`));
   const getInvoices = () => documents.filter((d) => d.type === "FACT");
   const getQuotations = () => documents.filter((d) => d.type === "COT");
@@ -506,6 +512,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createQuotation,
         convertQuotationToInvoice,
         updateDocumentStatus,
+        updateDocumentDates,
         fetchDocument,
         getInvoices,
         getQuotations,

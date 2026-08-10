@@ -5,9 +5,13 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Printer, Download, CreditCard, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Printer, Download, CreditCard, Loader2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { documentStatusLabel, documentStatusVariant } from "@/lib/statusLabels";
 import { ApiError } from "@/lib/api";
 import { printAs } from "@/lib/printDocument";
@@ -20,19 +24,28 @@ export default function QuotationDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { fetchDocument, convertQuotationToInvoice, clients } = useData();
+  const { fetchDocument, convertQuotationToInvoice, clients, updateDocumentDates } = useData();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [quotation, setQuotation] = useState<AppDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
+  const [editDatesOpen, setEditDatesOpen] = useState(false);
+  const [editCreatedAt, setEditCreatedAt] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [savingDates, setSavingDates] = useState(false);
+
+  const loadQuotation = () => {
     if (!id) return;
     setLoading(true);
     fetchDocument(id)
       .then((doc) => setQuotation(doc.type === "COT" ? doc : null))
       .catch(() => setQuotation(null))
       .finally(() => setLoading(false));
-  }, [id, fetchDocument]);
+  };
+
+  useEffect(loadQuotation, [id, fetchDocument]);
 
   if (loading) {
     return (
@@ -75,6 +88,33 @@ export default function QuotationDetails() {
     });
   };
 
+  const openEditDatesDialog = () => {
+    setEditCreatedAt(quotation.createdAt.slice(0, 10));
+    setEditDueDate(quotation.dueDate ? quotation.dueDate.slice(0, 10) : "");
+    setEditDatesOpen(true);
+  };
+
+  const handleSaveDates = async () => {
+    setSavingDates(true);
+    try {
+      await updateDocumentDates(quotation.id, {
+        createdAt: editCreatedAt ? new Date(editCreatedAt).toISOString() : undefined,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+      });
+      setEditDatesOpen(false);
+      loadQuotation();
+      toast({ title: "Datas atualizadas!", description: "As datas da cotação foram atualizadas com sucesso." });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof ApiError ? error.message : "Erro ao atualizar datas",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDates(false);
+    }
+  };
+
   const handleConvert = async () => {
     setIsProcessing(true);
     try {
@@ -114,6 +154,50 @@ export default function QuotationDetails() {
             </div>
           </div>
           <div className="flex space-x-2">
+            {isAdmin && (
+              <Dialog open={editDatesOpen} onOpenChange={setEditDatesOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" onClick={openEditDatesDialog}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar Datas
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Datas da Cotação</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="editCreatedAt">Data de Emissão</Label>
+                      <Input
+                        id="editCreatedAt"
+                        type="date"
+                        value={editCreatedAt}
+                        onChange={(e) => setEditCreatedAt(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editDueDate">Data de Validade</Label>
+                      <Input
+                        id="editDueDate"
+                        type="date"
+                        value={editDueDate}
+                        onChange={(e) => setEditDueDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button onClick={handleSaveDates} disabled={savingDates}>
+                        {savingDates ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        Guardar
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setEditDatesOpen(false)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
             <Button variant="outline" onClick={handleDownload}>
               <Download className="h-4 w-4 mr-2" />
               Download PDF

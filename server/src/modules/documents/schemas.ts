@@ -27,6 +27,12 @@ export const updateStatusSchema = z.object({
   status: z.enum(["draft", "issued", "canceled", "accepted", "rejected"]),
 });
 
+export const updateDatesSchema = z.object({
+  createdAt: z.coerce.date().optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+});
+
 export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
 export type ListDocumentsQuery = z.infer<typeof listDocumentsQuerySchema>;
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
+export type UpdateDatesInput = z.infer<typeof updateDatesSchema>;

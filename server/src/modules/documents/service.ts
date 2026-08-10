@@ -2,7 +2,7 @@ import { Prisma, Product } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { nextDocumentCode } from "../../utils/counters";
 import { BadRequestError, ConflictError, NotFoundError } from "../../utils/errors";
-import { CreateDocumentInput, ListDocumentsQuery, UpdateStatusInput } from "./schemas";
+import { CreateDocumentInput, ListDocumentsQuery, UpdateDatesInput, UpdateStatusInput } from "./schemas";
 import { checkAndNotifyStock } from "../notifications/service";
 
 type StockChange = { product: Product; previousStockQty: number };
@@ -232,6 +232,21 @@ export async function updateStatus(id: string, operatorId: string, { status }: U
 
   await notifyStockChanges(stockChanges);
   return result;
+}
+
+export async function updateDates(id: string, { createdAt, dueDate }: UpdateDatesInput) {
+  const document = await prisma.document.findUnique({ where: { id } });
+  if (!document) throw new NotFoundError("Documento não encontrado");
+
+  const updated = await prisma.document.update({
+    where: { id },
+    data: {
+      ...(createdAt !== undefined && { createdAt }),
+      ...(dueDate !== undefined && { dueDate }),
+    },
+    include: detailInclude,
+  });
+  return withPaidAmount(updated);
 }
 
 export async function convertToInvoice(quotationId: string, operatorId: string) {

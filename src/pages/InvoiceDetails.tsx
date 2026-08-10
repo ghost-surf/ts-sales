@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Printer, Download, Loader2, CreditCard, Ban } from "lucide-react";
+import { ArrowLeft, Printer, Download, Loader2, CreditCard, Ban, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { documentStatusLabel } from "@/lib/statusLabels";
 import { ApiError } from "@/lib/api";
 import { printAs } from "@/lib/printDocument";
@@ -24,9 +25,16 @@ export default function InvoiceDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { fetchDocument, clients, registerPayment, createCreditNote } = useData();
+  const { fetchDocument, clients, registerPayment, createCreditNote, updateDocumentDates } = useData();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [invoice, setInvoice] = useState<AppDocument | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [editDatesOpen, setEditDatesOpen] = useState(false);
+  const [editCreatedAt, setEditCreatedAt] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [savingDates, setSavingDates] = useState(false);
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("numerario");
@@ -92,6 +100,33 @@ export default function InvoiceDetails() {
       title: "Download iniciado",
       description: "Escolha \"Guardar como PDF\" na caixa de impressão.",
     });
+  };
+
+  const openEditDatesDialog = () => {
+    setEditCreatedAt(invoice.createdAt.slice(0, 10));
+    setEditDueDate(invoice.dueDate ? invoice.dueDate.slice(0, 10) : "");
+    setEditDatesOpen(true);
+  };
+
+  const handleSaveDates = async () => {
+    setSavingDates(true);
+    try {
+      await updateDocumentDates(invoice.id, {
+        createdAt: editCreatedAt ? new Date(editCreatedAt).toISOString() : undefined,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : null,
+      });
+      setEditDatesOpen(false);
+      loadInvoice();
+      toast({ title: "Datas atualizadas!", description: "As datas da fatura foram atualizadas com sucesso." });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof ApiError ? error.message : "Erro ao atualizar datas",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDates(false);
+    }
   };
 
   const openPaymentDialog = () => {
@@ -176,6 +211,50 @@ export default function InvoiceDetails() {
             </div>
           </div>
           <div className="flex space-x-2">
+            {isAdmin && (
+              <Dialog open={editDatesOpen} onOpenChange={setEditDatesOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" onClick={openEditDatesDialog}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar Datas
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Datas da Fatura</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="editCreatedAt">Data de Emissão</Label>
+                      <Input
+                        id="editCreatedAt"
+                        type="date"
+                        value={editCreatedAt}
+                        onChange={(e) => setEditCreatedAt(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="editDueDate">Data de Vencimento</Label>
+                      <Input
+                        id="editDueDate"
+                        type="date"
+                        value={editDueDate}
+                        onChange={(e) => setEditDueDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button onClick={handleSaveDates} disabled={savingDates}>
+                        {savingDates ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                        Guardar
+                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setEditDatesOpen(false)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
             <Button variant="outline" onClick={handleDownload}>
               <Download className="h-4 w-4 mr-2" />
               Download PDF
