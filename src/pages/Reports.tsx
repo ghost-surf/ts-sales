@@ -169,7 +169,6 @@ export default function Reports() {
     }
     const topProducts = [...productSales.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
       .map(([name, quantity]) => ({ name, quantity }));
 
     return { netTotal, vatTotal, salesCount: monthlyPaidInvoices.length, topProducts };
@@ -179,6 +178,26 @@ export default function Reports() {
     () => products.filter((p) => p.stock <= p.lowStockThreshold).sort((a, b) => a.stock - b.stock),
     [products]
   );
+
+  const {
+    pageItems: topProductsPage,
+    page: topProductsPageNum,
+    setPage: setTopProductsPage,
+    pageSize: topProductsPageSize,
+    setPageSize: setTopProductsPageSize,
+    totalPages: topProductsTotalPages,
+    totalItems: topProductsTotalItems,
+  } = usePagination(monthlyReport.topProducts);
+
+  const {
+    pageItems: lowStockPage,
+    page: lowStockPageNum,
+    setPage: setLowStockPage,
+    pageSize: lowStockPageSize,
+    setPageSize: setLowStockPageSize,
+    totalPages: lowStockTotalPages,
+    totalItems: lowStockTotalItems,
+  } = usePagination(lowStockProducts);
 
   const handleExportReport = () => {
     toast({
@@ -470,14 +489,14 @@ export default function Reports() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {monthlyReport.topProducts.length === 0 ? (
+                          {topProductsPage.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={2} className="text-center py-8 text-muted-foreground">
                                 Sem vendas de produtos no mês selecionado
                               </TableCell>
                             </TableRow>
                           ) : (
-                            monthlyReport.topProducts.map((row) => (
+                            topProductsPage.map((row) => (
                               <TableRow key={row.name}>
                                 <TableCell className="font-medium">{row.name}</TableCell>
                                 <TableCell className="text-right">{row.quantity}</TableCell>
@@ -486,6 +505,14 @@ export default function Reports() {
                           )}
                         </TableBody>
                       </Table>
+                      <TablePagination
+                        page={topProductsPageNum}
+                        totalPages={topProductsTotalPages}
+                        pageSize={topProductsPageSize}
+                        totalItems={topProductsTotalItems}
+                        onPageChange={setTopProductsPage}
+                        onPageSizeChange={setTopProductsPageSize}
+                      />
                     </CardContent>
                   </Card>
 
@@ -504,14 +531,14 @@ export default function Reports() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {lowStockProducts.length === 0 ? (
+                          {lowStockPage.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                                 Nenhum produto com stock baixo
                               </TableCell>
                             </TableRow>
                           ) : (
-                            lowStockProducts.map((product) => (
+                            lowStockPage.map((product) => (
                               <TableRow key={product.id}>
                                 <TableCell className="font-medium">{product.name}</TableCell>
                                 <TableCell className="text-right text-warning">{product.stock}</TableCell>
@@ -521,6 +548,14 @@ export default function Reports() {
                           )}
                         </TableBody>
                       </Table>
+                      <TablePagination
+                        page={lowStockPageNum}
+                        totalPages={lowStockTotalPages}
+                        pageSize={lowStockPageSize}
+                        totalItems={lowStockTotalItems}
+                        onPageChange={setLowStockPage}
+                        onPageSizeChange={setLowStockPageSize}
+                      />
                     </CardContent>
                   </Card>
                 </div>
