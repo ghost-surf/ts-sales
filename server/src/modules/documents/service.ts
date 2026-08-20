@@ -101,6 +101,9 @@ export async function create(operatorId: string, input: CreateDocumentInput) {
       if (item.itemType === "product") {
         const product = await tx.product.findUnique({ where: { id: item.itemId } });
         if (!product) throw new NotFoundError(`Produto ${item.itemId} não encontrado`);
+        if (product.unit === "pcs" && !Number.isInteger(item.quantity)) {
+          throw new BadRequestError(`Quantidade de "${product.name}" deve ser um número inteiro (unidade: peças)`);
+        }
         if (input.type === "FACT" && input.status === "issued" && Number(product.stockQty) < item.quantity) {
           throw new BadRequestError(`Stock insuficiente para "${product.name}"`);
         }

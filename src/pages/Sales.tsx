@@ -134,6 +134,14 @@ export default function Sales() {
 
   const addProductItem = (product: (typeof products)[number], quantity: number) => {
     if (quantity <= 0) return;
+    if (product.unit === "pcs" && !Number.isInteger(quantity)) {
+      toast({
+        title: "Erro",
+        description: "Quantidade deve ser um número inteiro para produtos em peças (pcs)!",
+        variant: "destructive",
+      });
+      return;
+    }
     if (documentType === "invoice" && quantity > product.stock) {
       toast({
         title: "Erro",
