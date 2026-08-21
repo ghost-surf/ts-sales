@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { History, Search, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
@@ -17,13 +18,27 @@ export default function StockMovements() {
   const { stockMovements, refreshStockMovements } = useData();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const currentMonth = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  })();
+  const [monthFrom, setMonthFrom] = useState<string>(currentMonth);
+  const [monthTo, setMonthTo] = useState<string>(currentMonth);
 
   useEffect(() => {
     refreshStockMovements();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = stockMovements.filter((movement) => {
+  const monthlyMovements = stockMovements.filter((movement) => {
+    const date = new Date(movement.createdAt);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    if (monthFrom && key < monthFrom) return false;
+    if (monthTo && key > monthTo) return false;
+    return true;
+  });
+
+  const filtered = monthlyMovements.filter((movement) => {
     const matchesSearch =
       normalizeSearch(movement.product.name).includes(normalizeSearch(searchTerm)) ||
       normalizeSearch(movement.operator?.name ?? "").includes(normalizeSearch(searchTerm)) ||
@@ -34,8 +49,8 @@ export default function StockMovements() {
 
   const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filtered);
 
-  const totalIn = stockMovements.filter((m) => m.type === "credit").reduce((sum, m) => sum + m.quantity, 0);
-  const totalOut = stockMovements.filter((m) => m.type === "debit").reduce((sum, m) => sum + m.quantity, 0);
+  const totalIn = monthlyMovements.filter((m) => m.type === "credit").reduce((sum, m) => sum + m.quantity, 0);
+  const totalOut = monthlyMovements.filter((m) => m.type === "debit").reduce((sum, m) => sum + m.quantity, 0);
 
   return (
     <Layout>
@@ -47,13 +62,34 @@ export default function StockMovements() {
           </p>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="max-w-48">
+            <Label htmlFor="month-from">Mês Inicial</Label>
+            <Input
+              id="month-from"
+              type="month"
+              value={monthFrom}
+              onChange={(e) => setMonthFrom(e.target.value)}
+            />
+          </div>
+          <div className="max-w-48">
+            <Label htmlFor="month-to">Mês Final</Label>
+            <Input
+              id="month-to"
+              type="month"
+              value={monthTo}
+              onChange={(e) => setMonthTo(e.target.value)}
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-2">
                 <History className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-2xl font-bold">{stockMovements.length}</p>
+                  <p className="text-2xl font-bold">{monthlyMovements.length}</p>
                   <p className="text-sm text-muted-foreground">Total de Movimentações</p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Receipt, Search, FileText } from "lucide-react";
@@ -21,10 +22,24 @@ export default function Invoices() {
   const isAdmin = user?.role === "admin";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const currentMonth = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  })();
+  const [monthFrom, setMonthFrom] = useState<string>(currentMonth);
+  const [monthTo, setMonthTo] = useState<string>(currentMonth);
 
   const invoices = getInvoices();
 
-  const filtered = invoices.filter((invoice) => {
+  const monthlyInvoices = invoices.filter((invoice) => {
+    const date = new Date(invoice.createdAt);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    if (monthFrom && key < monthFrom) return false;
+    if (monthTo && key > monthTo) return false;
+    return true;
+  });
+
+  const filtered = monthlyInvoices.filter((invoice) => {
     const matchesSearch =
       invoice.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -34,9 +49,9 @@ export default function Invoices() {
 
   const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filtered);
 
-  const totalInvoiced = invoices.reduce((sum, i) => sum + i.total, 0);
-  const totalPaid = invoices.reduce((sum, i) => sum + i.paidAmount, 0);
-  const totalPending = invoices
+  const totalInvoiced = monthlyInvoices.reduce((sum, i) => sum + i.total, 0);
+  const totalPaid = monthlyInvoices.reduce((sum, i) => sum + i.paidAmount, 0);
+  const totalPending = monthlyInvoices
     .filter((i) => i.displayStatus !== "paid" && i.displayStatus !== "canceled")
     .reduce((sum, i) => sum + (i.total - i.paidAmount), 0);
 
@@ -46,6 +61,27 @@ export default function Invoices() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Faturas</h1>
           <p className="text-muted-foreground">Todas as faturas emitidas</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="max-w-48">
+            <Label htmlFor="month-from">Mês Inicial</Label>
+            <Input
+              id="month-from"
+              type="month"
+              value={monthFrom}
+              onChange={(e) => setMonthFrom(e.target.value)}
+            />
+          </div>
+          <div className="max-w-48">
+            <Label htmlFor="month-to">Mês Final</Label>
+            <Input
+              id="month-to"
+              type="month"
+              value={monthTo}
+              onChange={(e) => setMonthTo(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className={`grid grid-cols-1 gap-4 ${isAdmin ? "md:grid-cols-3" : ""}`}>
