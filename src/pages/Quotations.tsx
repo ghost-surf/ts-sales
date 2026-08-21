@@ -14,29 +14,29 @@ import { DisplayStatus } from "@/types";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { toDateKey } from "@/lib/utils";
 
 export default function Quotations() {
   const { getQuotations } = useData();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const currentMonth = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  })();
-  const [monthFrom, setMonthFrom] = useState<string>(currentMonth);
-  const [monthTo, setMonthTo] = useState<string>(currentMonth);
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return toDateKey(thirtyDaysAgo);
+  });
+  const [dateTo, setDateTo] = useState<string>(() => toDateKey(new Date()));
 
   const quotations = getQuotations();
 
-  const monthlyQuotations = quotations.filter((quotation) => {
-    const date = new Date(quotation.createdAt);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    if (monthFrom && key < monthFrom) return false;
-    if (monthTo && key > monthTo) return false;
+  const dateFilteredQuotations = quotations.filter((quotation) => {
+    const key = toDateKey(new Date(quotation.createdAt));
+    if (dateFrom && key < dateFrom) return false;
+    if (dateTo && key > dateTo) return false;
     return true;
   });
 
-  const filtered = monthlyQuotations.filter((quotation) => {
+  const filtered = dateFilteredQuotations.filter((quotation) => {
     const matchesSearch =
       quotation.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quotation.clientName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,21 +56,21 @@ export default function Quotations() {
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="max-w-48">
-            <Label htmlFor="month-from">Mês Inicial</Label>
+            <Label htmlFor="date-from">Data Inicial</Label>
             <Input
-              id="month-from"
-              type="month"
-              value={monthFrom}
-              onChange={(e) => setMonthFrom(e.target.value)}
+              id="date-from"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
             />
           </div>
           <div className="max-w-48">
-            <Label htmlFor="month-to">Mês Final</Label>
+            <Label htmlFor="date-to">Data Final</Label>
             <Input
-              id="month-to"
-              type="month"
-              value={monthTo}
-              onChange={(e) => setMonthTo(e.target.value)}
+              id="date-to"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
             />
           </div>
         </div>
@@ -78,26 +78,26 @@ export default function Quotations() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
-              <p className="text-2xl font-bold">{monthlyQuotations.length}</p>
+              <p className="text-2xl font-bold">{dateFilteredQuotations.length}</p>
               <p className="text-sm text-muted-foreground">Total</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <p className="text-2xl font-bold">{monthlyQuotations.filter(q => q.displayStatus === "issued").length}</p>
+              <p className="text-2xl font-bold">{dateFilteredQuotations.filter(q => q.displayStatus === "issued").length}</p>
               <p className="text-sm text-muted-foreground">Pendentes</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <p className="text-2xl font-bold">{monthlyQuotations.filter(q => q.displayStatus === "accepted").length}</p>
+              <p className="text-2xl font-bold">{dateFilteredQuotations.filter(q => q.displayStatus === "accepted").length}</p>
               <p className="text-sm text-muted-foreground">Aceites</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-2xl font-bold">
-                {monthlyQuotations.filter(q => q.displayStatus === "rejected" || q.displayStatus === "expired").length}
+                {dateFilteredQuotations.filter(q => q.displayStatus === "rejected" || q.displayStatus === "expired").length}
               </p>
               <p className="text-sm text-muted-foreground">Rejeitadas/Expiradas</p>
             </CardContent>

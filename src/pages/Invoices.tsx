@@ -15,6 +15,7 @@ import { DisplayStatus } from "@/types";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { toDateKey } from "@/lib/utils";
 
 export default function Invoices() {
   const { getInvoices } = useData();
@@ -22,24 +23,23 @@ export default function Invoices() {
   const isAdmin = user?.role === "admin";
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const currentMonth = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  })();
-  const [monthFrom, setMonthFrom] = useState<string>(currentMonth);
-  const [monthTo, setMonthTo] = useState<string>(currentMonth);
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return toDateKey(thirtyDaysAgo);
+  });
+  const [dateTo, setDateTo] = useState<string>(() => toDateKey(new Date()));
 
   const invoices = getInvoices();
 
-  const monthlyInvoices = invoices.filter((invoice) => {
-    const date = new Date(invoice.createdAt);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    if (monthFrom && key < monthFrom) return false;
-    if (monthTo && key > monthTo) return false;
+  const dateFilteredInvoices = invoices.filter((invoice) => {
+    const key = toDateKey(new Date(invoice.createdAt));
+    if (dateFrom && key < dateFrom) return false;
+    if (dateTo && key > dateTo) return false;
     return true;
   });
 
-  const filtered = monthlyInvoices.filter((invoice) => {
+  const filtered = dateFilteredInvoices.filter((invoice) => {
     const matchesSearch =
       invoice.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.clientName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -49,9 +49,9 @@ export default function Invoices() {
 
   const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filtered);
 
-  const totalInvoiced = monthlyInvoices.reduce((sum, i) => sum + i.total, 0);
-  const totalPaid = monthlyInvoices.reduce((sum, i) => sum + i.paidAmount, 0);
-  const totalPending = monthlyInvoices
+  const totalInvoiced = dateFilteredInvoices.reduce((sum, i) => sum + i.total, 0);
+  const totalPaid = dateFilteredInvoices.reduce((sum, i) => sum + i.paidAmount, 0);
+  const totalPending = dateFilteredInvoices
     .filter((i) => i.displayStatus !== "paid" && i.displayStatus !== "canceled")
     .reduce((sum, i) => sum + (i.total - i.paidAmount), 0);
 
@@ -65,21 +65,21 @@ export default function Invoices() {
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="max-w-48">
-            <Label htmlFor="month-from">Mês Inicial</Label>
+            <Label htmlFor="date-from">Data Inicial</Label>
             <Input
-              id="month-from"
-              type="month"
-              value={monthFrom}
-              onChange={(e) => setMonthFrom(e.target.value)}
+              id="date-from"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
             />
           </div>
           <div className="max-w-48">
-            <Label htmlFor="month-to">Mês Final</Label>
+            <Label htmlFor="date-to">Data Final</Label>
             <Input
-              id="month-to"
-              type="month"
-              value={monthTo}
-              onChange={(e) => setMonthTo(e.target.value)}
+              id="date-to"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
             />
           </div>
         </div>

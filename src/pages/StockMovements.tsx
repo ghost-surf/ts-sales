@@ -11,34 +11,33 @@ import { History, Search, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/TablePagination";
-import { normalizeSearch } from "@/lib/utils";
+import { normalizeSearch, toDateKey } from "@/lib/utils";
 import { formatDateTime } from "@/lib/format";
 
 export default function StockMovements() {
   const { stockMovements, refreshStockMovements } = useData();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const currentMonth = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  })();
-  const [monthFrom, setMonthFrom] = useState<string>(currentMonth);
-  const [monthTo, setMonthTo] = useState<string>(currentMonth);
+  const [dateFrom, setDateFrom] = useState<string>(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return toDateKey(thirtyDaysAgo);
+  });
+  const [dateTo, setDateTo] = useState<string>(() => toDateKey(new Date()));
 
   useEffect(() => {
     refreshStockMovements();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const monthlyMovements = stockMovements.filter((movement) => {
-    const date = new Date(movement.createdAt);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    if (monthFrom && key < monthFrom) return false;
-    if (monthTo && key > monthTo) return false;
+  const dateFilteredMovements = stockMovements.filter((movement) => {
+    const key = toDateKey(new Date(movement.createdAt));
+    if (dateFrom && key < dateFrom) return false;
+    if (dateTo && key > dateTo) return false;
     return true;
   });
 
-  const filtered = monthlyMovements.filter((movement) => {
+  const filtered = dateFilteredMovements.filter((movement) => {
     const matchesSearch =
       normalizeSearch(movement.product.name).includes(normalizeSearch(searchTerm)) ||
       normalizeSearch(movement.operator?.name ?? "").includes(normalizeSearch(searchTerm)) ||
@@ -49,8 +48,8 @@ export default function StockMovements() {
 
   const { pageItems, page, setPage, pageSize, setPageSize, totalPages, totalItems } = usePagination(filtered);
 
-  const totalIn = monthlyMovements.filter((m) => m.type === "credit").reduce((sum, m) => sum + m.quantity, 0);
-  const totalOut = monthlyMovements.filter((m) => m.type === "debit").reduce((sum, m) => sum + m.quantity, 0);
+  const totalIn = dateFilteredMovements.filter((m) => m.type === "credit").reduce((sum, m) => sum + m.quantity, 0);
+  const totalOut = dateFilteredMovements.filter((m) => m.type === "debit").reduce((sum, m) => sum + m.quantity, 0);
 
   return (
     <Layout>
@@ -64,21 +63,21 @@ export default function StockMovements() {
 
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="max-w-48">
-            <Label htmlFor="month-from">Mês Inicial</Label>
+            <Label htmlFor="date-from">Data Inicial</Label>
             <Input
-              id="month-from"
-              type="month"
-              value={monthFrom}
-              onChange={(e) => setMonthFrom(e.target.value)}
+              id="date-from"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
             />
           </div>
           <div className="max-w-48">
-            <Label htmlFor="month-to">Mês Final</Label>
+            <Label htmlFor="date-to">Data Final</Label>
             <Input
-              id="month-to"
-              type="month"
-              value={monthTo}
-              onChange={(e) => setMonthTo(e.target.value)}
+              id="date-to"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
             />
           </div>
         </div>
@@ -89,7 +88,7 @@ export default function StockMovements() {
               <div className="flex items-center space-x-2">
                 <History className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-2xl font-bold">{monthlyMovements.length}</p>
+                  <p className="text-2xl font-bold">{dateFilteredMovements.length}</p>
                   <p className="text-sm text-muted-foreground">Total de Movimentações</p>
                 </div>
               </div>

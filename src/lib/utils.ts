@@ -12,3 +12,8 @@ export function normalizeSearch(value: string): string {
     .replace(/\p{Diacritic}/gu, "")
     .toLowerCase();
 }
+
+/** Formats a Date as YYYY-MM-DD, matching an <input type="date"> value and sorting correctly as a string. */
+export function toDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
