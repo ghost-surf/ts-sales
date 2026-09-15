@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Layout } from "@/components/Layout/Layout";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -40,9 +41,25 @@ interface SaleItem {
 export default function Sales() {
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { clients, products, services, getProductCategories, getServiceCategories, taxes, addClient, createInvoice, createQuotation } = useData();
+  const {
+    clients,
+    products,
+    services,
+    getProductCategories,
+    getServiceCategories,
+    taxes,
+    addClient,
+    createInvoice,
+    createQuotation,
+    updateQuotation,
+    fetchDocument,
+  } = useData();
   const productCategories = getProductCategories();
   const serviceCategories = getServiceCategories();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const duplicateId = searchParams.get("duplicate");
+  const editId = searchParams.get("edit");
 
   const [documentType, setDocumentType] = useState<"invoice" | "quotation">("invoice");
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
@@ -53,10 +70,54 @@ export default function Sales() {
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [selectedTaxId, setSelectedTaxId] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const [loadingSource, setLoadingSource] = useState(false);
+  const [originalDueDate, setOriginalDueDate] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [serviceSearch, setServiceSearch] = useState("");
   const [productCategoryId, setProductCategoryId] = useState("all");
   const [serviceCategoryId, setServiceCategoryId] = useState("all");
+
+  useEffect(() => {
+    const sourceId = duplicateId || editId;
+    if (!sourceId) return;
+
+    setLoadingSource(true);
+    fetchDocument(sourceId)
+      .then((doc) => {
+        setDocumentType("quotation");
+        setSelectedClient(doc.clientId);
+        setItems(
+          doc.items.map((item, index) => ({
+            id: Date.now() + index,
+            itemType: item.itemType,
+            itemId: item.itemId,
+            name: item.description,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            lineTotal: item.lineTotal,
+          }))
+        );
+        setDiscountEnabled(doc.discountApplied);
+        setVatEnabled(doc.vatApplied);
+        setOriginalDueDate(doc.dueDate ?? null);
+
+        const taxableAmount = doc.subtotalProducts + doc.subtotalServices - doc.discountValue;
+        if (doc.vatApplied && taxableAmount > 0) {
+          const impliedPercentage = (doc.vatValue / taxableAmount) * 100;
+          const match = taxes.find((t) => Math.abs(t.percentage - impliedPercentage) < 0.5);
+          if (match) setSelectedTaxId(match.id);
+        }
+      })
+      .catch(() => {
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar a cotação de origem",
+          variant: "destructive",
+        });
+      })
+      .finally(() => setLoadingSource(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [duplicateId, editId]);
 
   // New client form
   const [newClient, setNewClient] = useState({
@@ -191,10 +252,13 @@ export default function Sales() {
     }
 
     const clientName = clients.find((c) => c.id === selectedClient)?.name ?? "";
+    const isEditing = Boolean(editId);
     const ok = await confirm({
-      title: documentType === "invoice" ? "Criar fatura?" : "Criar cotação?",
-      description: `${documentType === "invoice" ? "Esta fatura" : "Esta cotação"} será criada para ${clientName}, no valor de ${formatCurrency(total)}.${documentType === "invoice" ? " O stock dos produtos será deduzido." : ""}`,
-      confirmLabel: "Criar",
+      title: isEditing ? "Guardar alterações?" : documentType === "invoice" ? "Criar fatura?" : "Criar cotação?",
+      description: isEditing
+        ? `As alterações a esta cotação serão guardadas, no novo valor de ${formatCurrency(total)}.`
+        : `${documentType === "invoice" ? "Esta fatura" : "Esta cotação"} será criada para ${clientName}, no valor de ${formatCurrency(total)}.${documentType === "invoice" ? " O stock dos produtos será deduzido." : ""}`,
+      confirmLabel: isEditing ? "Guardar" : "Criar",
     });
     if (!ok) return;
 
@@ -210,8 +274,20 @@ export default function Sales() {
         vatApplied: vatEnabled,
         taxPercentage,
         discountValue,
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        dueDate: isEditing
+          ? originalDueDate ?? undefined
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       };
+
+      if (isEditing && editId) {
+        const updated = await updateQuotation(editId, input);
+        toast({
+          title: "Cotação atualizada!",
+          description: `Documento ${updated.code} atualizado com sucesso.`,
+        });
+        navigate(`/quotation/${editId}`);
+        return;
+      }
 
       const created = documentType === "invoice" ? await createInvoice(input) : await createQuotation(input);
 
@@ -239,8 +315,16 @@ export default function Sales() {
       <div className="space-y-4">
         {/* Page Header */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Vendas</h1>
-          <p className="text-sm text-muted-foreground">Criar novas faturas e cotações</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {editId ? "Editar Cotação" : duplicateId ? "Duplicar Cotação" : "Vendas"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {editId
+              ? "Altere os dados da cotação e guarde as alterações"
+              : duplicateId
+              ? "Os dados foram pré-preenchidos a partir da cotação original"
+              : "Criar novas faturas e cotações"}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -251,18 +335,25 @@ export default function Sales() {
               <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs text-muted-foreground">Tipo de Documento</Label>
-                  <Tabs value={documentType} onValueChange={(value: any) => setDocumentType(value)} className="mt-1">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="invoice" className="flex items-center space-x-1.5">
-                        <ShoppingCart className="h-3.5 w-3.5" />
-                        <span>Faturação</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="quotation" className="flex items-center space-x-1.5">
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>Cotação</span>
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                  {editId ? (
+                    <div className="mt-1 flex items-center gap-1.5 h-9 px-3 rounded-md border bg-muted/30 text-sm">
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Cotação (a editar)</span>
+                    </div>
+                  ) : (
+                    <Tabs value={documentType} onValueChange={(value: any) => setDocumentType(value)} className="mt-1">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="invoice" className="flex items-center space-x-1.5">
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                          <span>Faturação</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="quotation" className="flex items-center space-x-1.5">
+                          <FileText className="h-3.5 w-3.5" />
+                          <span>Cotação</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  )}
                 </div>
 
                 <div>
@@ -601,9 +692,15 @@ export default function Sales() {
                 <Button
                   onClick={handleSaveDocument}
                   className="w-full"
-                  disabled={!selectedClient || items.length === 0 || saving}
+                  disabled={!selectedClient || items.length === 0 || saving || loadingSource}
                 >
-                  {saving ? "A guardar..." : documentType === "invoice" ? "Criar Fatura" : "Criar Cotação"}
+                  {saving
+                    ? "A guardar..."
+                    : editId
+                    ? "Guardar Alterações"
+                    : documentType === "invoice"
+                    ? "Criar Fatura"
+                    : "Criar Cotação"}
                 </Button>
               </CardContent>
             </Card>

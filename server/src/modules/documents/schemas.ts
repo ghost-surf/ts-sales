@@ -32,7 +32,17 @@ export const updateDatesSchema = z.object({
   dueDate: z.coerce.date().nullable().optional(),
 });
 
+export const updateQuotationSchema = z.object({
+  clientId: z.string().min(1),
+  items: z.array(documentItemSchema).min(1, "O documento precisa de pelo menos um item"),
+  vatApplied: z.boolean().default(true),
+  taxPercentage: z.number().min(0).max(100).default(0),
+  discountValue: z.number().min(0).default(0),
+  dueDate: z.coerce.date().optional(),
+});
+
 export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
 export type ListDocumentsQuery = z.infer<typeof listDocumentsQuerySchema>;
 export type UpdateStatusInput = z.infer<typeof updateStatusSchema>;
 export type UpdateDatesInput = z.infer<typeof updateDatesSchema>;
+export type UpdateQuotationInput = z.infer<typeof updateQuotationSchema>;

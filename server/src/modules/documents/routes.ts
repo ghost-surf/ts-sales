@@ -12,4 +12,5 @@ documentsRouter.get("/:id", asyncHandler(controller.get));
 documentsRouter.post("/", asyncHandler(controller.create));
 documentsRouter.patch("/:id/status", asyncHandler(controller.updateStatus));
 documentsRouter.patch("/:id/dates", requireRole("admin"), asyncHandler(controller.updateDates));
+documentsRouter.patch("/:id/quotation", requireRole("admin"), asyncHandler(controller.updateQuotation));
 documentsRouter.post("/:id/convert-to-invoice", asyncHandler(controller.convertToInvoice));

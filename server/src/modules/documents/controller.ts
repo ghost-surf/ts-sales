@@ -1,6 +1,12 @@
 import { Request, Response } from "express";
 import * as service from "./service";
-import { createDocumentSchema, listDocumentsQuerySchema, updateDatesSchema, updateStatusSchema } from "./schemas";
+import {
+  createDocumentSchema,
+  listDocumentsQuerySchema,
+  updateDatesSchema,
+  updateQuotationSchema,
+  updateStatusSchema,
+} from "./schemas";
 
 export async function list(req: Request, res: Response) {
   const query = listDocumentsQuerySchema.parse(req.query);
@@ -24,6 +30,11 @@ export async function updateStatus(req: Request, res: Response) {
 export async function updateDates(req: Request, res: Response) {
   const data = updateDatesSchema.parse(req.body);
   res.json(await service.updateDates(req.params.id, data));
+}
+
+export async function updateQuotation(req: Request, res: Response) {
+  const data = updateQuotationSchema.parse(req.body);
+  res.json(await service.updateQuotation(req.params.id, data));
 }
 
 export async function convertToInvoice(req: Request, res: Response) {

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Printer, Download, CreditCard, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, Printer, Download, CreditCard, Loader2, Pencil, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -154,6 +154,16 @@ export default function QuotationDetails() {
             </div>
           </div>
           <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => navigate(`/sales?duplicate=${quotation.id}`)}>
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicar
+            </Button>
+            {isAdmin && (quotation.status === "issued" || quotation.status === "draft") && (
+              <Button variant="outline" onClick={() => navigate(`/sales?edit=${quotation.id}`)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+            )}
             {isAdmin && (
               <Dialog open={editDatesOpen} onOpenChange={setEditDatesOpen}>
                 <DialogTrigger asChild>

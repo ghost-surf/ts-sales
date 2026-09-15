@@ -2,7 +2,7 @@ import { Prisma, Product } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { nextDocumentCode } from "../../utils/counters";
 import { BadRequestError, ConflictError, NotFoundError } from "../../utils/errors";
-import { CreateDocumentInput, ListDocumentsQuery, UpdateDatesInput, UpdateStatusInput } from "./schemas";
+import { CreateDocumentInput, ListDocumentsQuery, UpdateDatesInput, UpdateQuotationInput, UpdateStatusInput } from "./schemas";
 import { checkAndNotifyStock } from "../notifications/service";
 
 type StockChange = { product: Product; previousStockQty: number };
@@ -250,6 +250,93 @@ export async function updateDates(id: string, { createdAt, dueDate }: UpdateDate
     include: detailInclude,
   });
   return withPaidAmount(updated);
+}
+
+export async function updateQuotation(id: string, input: UpdateQuotationInput) {
+  const result = await prisma.$transaction(async (tx) => {
+    const quotation = await tx.document.findUnique({ where: { id }, include: { convertedInvoice: true } });
+    if (!quotation) throw new NotFoundError("Cotação não encontrada");
+    if (quotation.type !== "COT") throw new BadRequestError("Documento não é uma cotação");
+    if (quotation.convertedInvoice) throw new ConflictError("Cotação já foi convertida em fatura, não pode ser editada");
+    if (!["draft", "issued"].includes(quotation.status)) {
+      throw new BadRequestError(`Cotação com estado "${quotation.status}" não pode ser editada`);
+    }
+
+    const client = await tx.client.findUnique({ where: { id: input.clientId } });
+    if (!client) throw new NotFoundError("Cliente não encontrado");
+
+    let subtotalProducts = 0;
+    let subtotalServices = 0;
+    const itemsData: Array<{
+      itemType: "product" | "service";
+      itemId: string;
+      description: string;
+      unitPrice: Prisma.Decimal;
+      quantity: number;
+      unit?: "metros" | "pcs" | "kg" | "litros";
+      lineTotal: number;
+    }> = [];
+
+    for (const item of input.items) {
+      if (item.itemType === "product") {
+        const product = await tx.product.findUnique({ where: { id: item.itemId } });
+        if (!product) throw new NotFoundError(`Produto ${item.itemId} não encontrado`);
+        if (product.unit === "pcs" && !Number.isInteger(item.quantity)) {
+          throw new BadRequestError(`Quantidade de "${product.name}" deve ser um número inteiro (unidade: peças)`);
+        }
+        const lineTotal = Number(product.price) * item.quantity;
+        subtotalProducts += lineTotal;
+        itemsData.push({
+          itemType: "product",
+          itemId: product.id,
+          description: product.name,
+          unitPrice: product.price,
+          quantity: item.quantity,
+          unit: product.unit,
+          lineTotal,
+        });
+      } else {
+        const service = await tx.service.findUnique({ where: { id: item.itemId } });
+        if (!service) throw new NotFoundError(`Serviço ${item.itemId} não encontrado`);
+        const lineTotal = Number(service.price) * item.quantity;
+        subtotalServices += lineTotal;
+        itemsData.push({
+          itemType: "service",
+          itemId: service.id,
+          description: service.name,
+          unitPrice: service.price,
+          quantity: item.quantity,
+          lineTotal,
+        });
+      }
+    }
+
+    const subtotal = subtotalProducts + subtotalServices;
+    const discountValue = Math.min(input.discountValue, subtotal);
+    const vatValue = input.vatApplied ? (subtotal - discountValue) * (input.taxPercentage / 100) : 0;
+    const total = subtotal - discountValue + vatValue;
+
+    const updated = await tx.document.update({
+      where: { id },
+      data: {
+        clientId: input.clientId,
+        subtotalProducts,
+        subtotalServices,
+        discountApplied: discountValue > 0,
+        vatApplied: input.vatApplied,
+        discountValue,
+        vatValue,
+        total,
+        dueDate: input.dueDate,
+        items: { deleteMany: {}, create: itemsData },
+      },
+      include: detailInclude,
+    });
+
+    return withPaidAmount(updated);
+  });
+
+  return result;
 }
 
 export async function convertToInvoice(quotationId: string, operatorId: string) {
