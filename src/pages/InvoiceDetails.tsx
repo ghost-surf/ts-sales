@@ -406,7 +406,7 @@ export default function InvoiceDetails() {
               }}
             />
             <Separator className="my-3" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <span className="font-medium">Número:</span>
                 <p>{invoice.code}</p>
@@ -438,7 +438,14 @@ export default function InvoiceDetails() {
           <CardContent>
             {/* Items Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs table-fixed">
+                <colgroup>
+                  <col className="w-[8%]" />
+                  <col className="w-[42%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[19%]" />
+                  <col className="w-[19%]" />
+                </colgroup>
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Item</th>
@@ -452,7 +459,7 @@ export default function InvoiceDetails() {
                   {invoice.items.map((item, index) => (
                     <tr key={item.id} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
                       <td className="py-2 px-2">{index + 1}</td>
-                      <td className="py-2 px-2">{item.description}</td>
+                      <td className="py-2 px-2 break-words">{item.description}</td>
                       <td className="text-right py-2 px-2">{item.quantity}</td>
                       <td className="text-right py-2 px-2">{formatCurrency(item.unitPrice)}</td>
                       <td className="text-right py-2 px-2">{formatCurrency(item.lineTotal)}</td>
@@ -463,7 +470,7 @@ export default function InvoiceDetails() {
             </div>
 
             {/* Totals */}
-            <div className="mt-6 space-y-2 text-sm">
+            <div className="mt-6 space-y-2 text-xs">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
                 <span>{formatCurrency(invoice.subtotalProducts + invoice.subtotalServices)}</span>

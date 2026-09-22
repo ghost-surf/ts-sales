@@ -34,25 +34,25 @@ export function DocumentHeader({ client, clientLabel = "Cliente" }: DocumentHead
       </div>
 
       <div className="col-span-4">
-        <h2 className="text-sm font-semibold mb-0.5">{companySettings?.name ?? "Minha Empresa"}</h2>
+        <h2 className="text-xs font-semibold mb-0.5 break-words">{companySettings?.name ?? "Minha Empresa"}</h2>
         <div className="text-muted-foreground space-y-0">
-          {companySettings?.address && <p>{companySettings.address}</p>}
+          {companySettings?.address && <p className="break-words">{companySettings.address}</p>}
           {companySettings?.nuit && <p>NUIT: {companySettings.nuit}</p>}
           {companySettings?.phone && <p>Tel: {companySettings.phone}</p>}
-          {companySettings?.email && <p>Email: {companySettings.email}</p>}
-          {companySettings?.website && <p>{companySettings.website}</p>}
+          {companySettings?.email && <p className="break-words">Email: {companySettings.email}</p>}
+          {companySettings?.website && <p className="break-words">{companySettings.website}</p>}
         </div>
       </div>
 
       <div className="col-span-3 text-left">
-        <h3 className="text-sm font-semibold mb-0.5">{clientLabel}</h3>
+        <h3 className="text-xs font-semibold mb-0.5">{clientLabel}</h3>
         {client ? (
           <div className="text-muted-foreground space-y-0">
-            <p className="text-foreground">{client.name}</p>
-            {client.address && <p>{client.address}</p>}
+            <p className="text-foreground break-words">{client.name}</p>
+            {client.address && <p className="break-words">{client.address}</p>}
             {client.nuit && <p>NUIT: {client.nuit}</p>}
             {client.phone && <p>Tel: {client.phone}</p>}
-            {client.email && <p>Email: {client.email}</p>}
+            {client.email && <p className="break-words">Email: {client.email}</p>}
           </div>
         ) : (
           <p className="text-muted-foreground">—</p>

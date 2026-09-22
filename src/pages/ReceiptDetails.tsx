@@ -117,7 +117,7 @@ export default function ReceiptDetails() {
               }}
             />
             <Separator className="my-3" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <span className="font-medium">Código:</span>
                 <p>{receipt.receiptCode}</p>
@@ -145,7 +145,7 @@ export default function ReceiptDetails() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-2">Item</th>
@@ -159,7 +159,7 @@ export default function ReceiptDetails() {
                   {receipt.documents.map((alloc, index) => (
                     <tr key={alloc.documentId} className={index % 2 === 1 ? "bg-muted/40" : "bg-white"}>
                       <td className="py-2 px-2">{index + 1}</td>
-                      <td className="py-2 px-2">
+                      <td className="py-2 px-2 break-words">
                         <Link to={`/invoice/${alloc.documentId}`} className="text-primary hover:underline">
                           {alloc.document?.code ?? alloc.documentId}
                         </Link>
@@ -173,7 +173,7 @@ export default function ReceiptDetails() {
               </table>
             </div>
 
-            <div className="mt-6 space-y-2 text-sm">
+            <div className="mt-6 space-y-2 text-xs">
               <Separator />
               <div
                 className={`flex justify-between text-lg font-semibold ${
