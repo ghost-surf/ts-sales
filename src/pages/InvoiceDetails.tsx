@@ -406,7 +406,7 @@ export default function InvoiceDetails() {
               }}
             />
             <Separator className="my-3" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div>
                 <span className="font-medium">Número:</span>
                 <p>{invoice.code}</p>
@@ -414,10 +414,6 @@ export default function InvoiceDetails() {
               <div>
                 <span className="font-medium">Data:</span>
                 <p>{formatDate(invoice.createdAt)}</p>
-              </div>
-              <div>
-                <span className="font-medium">Vencimento:</span>
-                <p>{formatDate(invoice.dueDate)}</p>
               </div>
               <div>
                 <span className="font-medium">Status:</span>
