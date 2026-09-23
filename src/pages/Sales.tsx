@@ -471,10 +471,10 @@ export default function Sales() {
                           <p className="text-xs text-muted-foreground text-center py-6">Nenhum produto encontrado</p>
                         )}
                         {filteredProducts.map((product) => (
-                          <div key={product.id} className="flex items-center justify-between p-2 border rounded-md">
+                          <div key={product.id} className="flex items-start justify-between p-2 border rounded-md">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium truncate">{product.name}</p>
+                              <div className="flex items-start gap-1.5 flex-wrap">
+                                <p className="text-sm font-medium break-words">{product.name}</p>
                                 <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0">
                                   {product.category}
                                 </Badge>
@@ -486,7 +486,7 @@ export default function Sales() {
                             <Input
                               type="number"
                               placeholder="Qtd"
-                              className="w-16 h-8 text-sm ml-2"
+                              className="w-16 h-8 text-sm ml-2 shrink-0"
                               min={product.unit === "pcs" ? "1" : "0.01"}
                               step={product.unit === "pcs" ? "1" : "0.01"}
                               onKeyDown={(e) => {
@@ -534,10 +534,10 @@ export default function Sales() {
                           <p className="text-xs text-muted-foreground text-center py-6">Nenhum serviço encontrado</p>
                         )}
                         {filteredServices.map((service) => (
-                          <div key={service.id} className="flex items-center justify-between p-2 border rounded-md">
+                          <div key={service.id} className="flex items-start justify-between p-2 border rounded-md">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-sm font-medium truncate">{service.name}</p>
+                              <div className="flex items-start gap-1.5 flex-wrap">
+                                <p className="text-sm font-medium break-words">{service.name}</p>
                                 <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0">
                                   {service.category}
                                 </Badge>
@@ -548,7 +548,7 @@ export default function Sales() {
                               ref={(el) => { serviceQtyInputs.current[service.id] = el; }}
                               type="number"
                               placeholder="Qtd"
-                              className="w-16 h-8 text-sm ml-2"
+                              className="w-16 h-8 text-sm ml-2 shrink-0"
                               min="1"
                               step="1"
                               onKeyDown={(e) => {
@@ -561,7 +561,7 @@ export default function Sales() {
                             />
                             <Button
                               size="sm"
-                              className="h-8 w-8 p-0 ml-2"
+                              className="h-8 w-8 p-0 ml-2 shrink-0"
                               onClick={() => {
                                 const input = serviceQtyInputs.current[service.id];
                                 const quantity = Number(input?.value) || 1;
