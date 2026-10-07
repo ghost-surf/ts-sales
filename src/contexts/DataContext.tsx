@@ -89,6 +89,7 @@ function mapDocument(raw: any): AppDocument {
     clientId: raw.clientId,
     clientName: raw.client?.name ?? "",
     operatorId: raw.operatorId,
+    operator: raw.operator ?? undefined,
     subtotalProducts: raw.subtotalProducts,
     subtotalServices: raw.subtotalServices,
     discountApplied: raw.discountApplied,
@@ -297,6 +298,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setStockMovements([]);
       setCreditNotes([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  /** Background polling so changes made by other users (other computers/sessions) show up without a manual page reload. */
+  useEffect(() => {
+    if (!user) return;
+
+    const poll = () => {
+      if (document.visibilityState !== "visible") return;
+      const tasks = [refreshClients(), refreshProducts(), refreshDocuments(), refreshPayments(), refreshCreditNotes()];
+      if (user.role === "admin") tasks.push(refreshStockMovements());
+      Promise.allSettled(tasks);
+    };
+
+    const interval = setInterval(poll, 20000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", poll);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 

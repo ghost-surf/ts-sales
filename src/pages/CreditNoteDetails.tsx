@@ -19,14 +19,34 @@ export default function CreditNoteDetails() {
   const [creditNote, setCreditNote] = useState<CreditNote | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadCreditNote = (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     fetchCreditNote(id)
       .then(setCreditNote)
-      .catch(() => setCreditNote(null))
-      .finally(() => setLoading(false));
-  }, [id, fetchCreditNote]);
+      .catch(() => {
+        if (!silent) setCreditNote(null);
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
+  };
+
+  useEffect(() => loadCreditNote(), [id, fetchCreditNote]);
+
+  /** Keeps the credit note in sync with changes made elsewhere. */
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === "visible") loadCreditNote(true);
+    };
+    const interval = setInterval(poll, 20000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (loading) {
     return (

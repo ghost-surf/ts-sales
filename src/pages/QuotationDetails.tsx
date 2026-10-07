@@ -36,16 +36,34 @@ export default function QuotationDetails() {
   const [editDueDate, setEditDueDate] = useState("");
   const [savingDates, setSavingDates] = useState(false);
 
-  const loadQuotation = () => {
+  const loadQuotation = (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     fetchDocument(id)
       .then((doc) => setQuotation(doc.type === "COT" ? doc : null))
-      .catch(() => setQuotation(null))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!silent) setQuotation(null);
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
-  useEffect(loadQuotation, [id, fetchDocument]);
+  useEffect(() => loadQuotation(), [id, fetchDocument]);
+
+  /** Keeps the quotation in sync with changes made elsewhere. */
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === "visible") loadQuotation(true);
+    };
+    const interval = setInterval(poll, 20000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (loading) {
     return (

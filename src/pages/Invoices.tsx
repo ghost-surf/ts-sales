@@ -169,6 +169,7 @@ export default function Invoices() {
                     <TableHead>Código</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Data</TableHead>
+                    <TableHead>Operador</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -180,6 +181,7 @@ export default function Invoices() {
                       <TableCell className="font-mono font-medium">{invoice.code}</TableCell>
                       <TableCell>{invoice.clientName}</TableCell>
                       <TableCell>{formatDate(invoice.createdAt)}</TableCell>
+                      <TableCell>{invoice.operator?.name ?? "—"}</TableCell>
                       <TableCell>{formatCurrency(invoice.total)}</TableCell>
                       <TableCell>
                         <Badge variant={documentStatusVariant(invoice.displayStatus)}>

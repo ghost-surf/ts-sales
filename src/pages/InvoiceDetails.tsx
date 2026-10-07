@@ -46,16 +46,34 @@ export default function InvoiceDetails() {
   const [creditNoteReason, setCreditNoteReason] = useState("");
   const [issuingCreditNote, setIssuingCreditNote] = useState(false);
 
-  const loadInvoice = () => {
+  const loadInvoice = (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     fetchDocument(id)
       .then((doc) => setInvoice(doc.type === "FACT" ? doc : null))
-      .catch(() => setInvoice(null))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!silent) setInvoice(null);
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
-  useEffect(loadInvoice, [id, fetchDocument]);
+  useEffect(() => loadInvoice(), [id, fetchDocument]);
+
+  /** Keeps the invoice in sync with changes made elsewhere (e.g. a payment registered on another computer). */
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === "visible") loadInvoice(true);
+    };
+    const interval = setInterval(poll, 20000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (loading) {
     return (
@@ -406,7 +424,7 @@ export default function InvoiceDetails() {
               }}
             />
             <Separator className="my-3" />
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <span className="font-medium">Número:</span>
                 <p>{invoice.code}</p>
@@ -414,6 +432,10 @@ export default function InvoiceDetails() {
               <div>
                 <span className="font-medium">Data:</span>
                 <p>{formatDate(invoice.createdAt)}</p>
+              </div>
+              <div>
+                <span className="font-medium">Operador:</span>
+                <p>{invoice.operator?.name ?? "—"}</p>
               </div>
               <div>
                 <span className="font-medium">Status:</span>

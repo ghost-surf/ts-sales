@@ -22,14 +22,34 @@ export default function ReceiptDetails() {
   const [receipt, setReceipt] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadReceipt = (silent = false) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     fetchPayment(id)
       .then(setReceipt)
-      .catch(() => setReceipt(null))
-      .finally(() => setLoading(false));
-  }, [id, fetchPayment]);
+      .catch(() => {
+        if (!silent) setReceipt(null);
+      })
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
+  };
+
+  useEffect(() => loadReceipt(), [id, fetchPayment]);
+
+  /** Keeps the receipt in sync with changes made elsewhere. */
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === "visible") loadReceipt(true);
+    };
+    const interval = setInterval(poll, 20000);
+    document.addEventListener("visibilitychange", poll);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", poll);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   if (loading) {
     return (

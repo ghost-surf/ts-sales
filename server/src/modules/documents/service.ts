@@ -60,6 +60,7 @@ export async function list(query: ListDocumentsQuery) {
     include: {
       client: { select: { id: true, name: true } },
       items: true,
+      operator: { select: { id: true, name: true, email: true } },
       paymentLinks: { select: { amount: true } },
       creditNote: { select: { id: true, code: true } },
     },

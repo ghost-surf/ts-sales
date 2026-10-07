@@ -80,6 +80,7 @@ export interface AppDocument {
   clientId: string;
   clientName: string;
   operatorId: string;
+  operator?: { id: string; name: string; email: string };
   subtotalProducts: number;
   subtotalServices: number;
   discountApplied: boolean;
