@@ -475,7 +475,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await refreshDocuments();
     return updated;
   };
-  const fetchDocument = async (id: string) => mapDocument(await api.get(`/documents/${id}`));
+  const fetchDocument = useCallback(async (id: string) => mapDocument(await api.get(`/documents/${id}`)), []);
   const getInvoices = () => documents.filter((d) => d.type === "FACT");
   const getQuotations = () => documents.filter((d) => d.type === "COT");
 
@@ -485,7 +485,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await Promise.allSettled([refreshPayments(), refreshDocuments()]);
     return created;
   };
-  const fetchPayment = async (id: string) => api.get<Payment>(`/payments/${id}`);
+  const fetchPayment = useCallback(async (id: string) => api.get<Payment>(`/payments/${id}`), []);
 
   // ---- Credit notes ----
   const createCreditNote = async (documentId: string, reason?: string) => {
@@ -495,7 +495,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     await Promise.allSettled(tasks);
     return created;
   };
-  const fetchCreditNote = async (id: string) => api.get<CreditNote>(`/credit-notes/${id}`);
+  const fetchCreditNote = useCallback(async (id: string) => api.get<CreditNote>(`/credit-notes/${id}`), []);
 
   // ---- Company settings ----
   const updateCompanySettings: DataContextType["updateCompanySettings"] = async (data) => {
