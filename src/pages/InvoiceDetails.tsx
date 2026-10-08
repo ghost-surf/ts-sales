@@ -39,6 +39,8 @@ export default function InvoiceDetails() {
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [method, setMethod] = useState<PaymentMethod>("numerario");
   const [chequeNumber, setChequeNumber] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [transferReference, setTransferReference] = useState("");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -150,6 +152,8 @@ export default function InvoiceDetails() {
   const openPaymentDialog = () => {
     setMethod("numerario");
     setChequeNumber("");
+    setBankName("");
+    setTransferReference("");
     setAmount(remaining.toFixed(2));
     setPaymentDialogOpen(true);
   };
@@ -164,12 +168,22 @@ export default function InvoiceDetails() {
       toast({ title: "Erro", description: "Indique o número do cheque", variant: "destructive" });
       return;
     }
+    if (method === "transferencia" && (!bankName.trim() || !transferReference.trim())) {
+      toast({
+        title: "Erro",
+        description: "Indique o nome do banco e a referência da transferência",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSubmitting(true);
     try {
       const payment = await registerPayment({
         method,
         chequeNumber: method === "cheque" ? chequeNumber : undefined,
+        bankName: method === "transferencia" ? bankName : undefined,
+        transferReference: method === "transferencia" ? transferReference : undefined,
         allocations: [{ documentId: invoice.id, amount: value }],
       });
       setPaymentDialogOpen(false);
@@ -380,6 +394,28 @@ export default function InvoiceDetails() {
                           placeholder="Ex: CHQ-1001"
                         />
                       </div>
+                    )}
+                    {method === "transferencia" && (
+                      <>
+                        <div>
+                          <Label htmlFor="bankName">Nome do Banco</Label>
+                          <Input
+                            id="bankName"
+                            value={bankName}
+                            onChange={(e) => setBankName(e.target.value)}
+                            placeholder="Ex: BIM, Standard Bank, Absa"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="transferReference">Referência da Transferência</Label>
+                          <Input
+                            id="transferReference"
+                            value={transferReference}
+                            onChange={(e) => setTransferReference(e.target.value)}
+                            placeholder="Ex: TRF-20261008-001"
+                          />
+                        </div>
+                      </>
                     )}
                     <div>
                       <Label htmlFor="amount">Valor (MT)</Label>

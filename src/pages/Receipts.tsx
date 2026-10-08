@@ -34,6 +34,8 @@ export default function Receipts() {
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [method, setMethod] = useState<PaymentMethod>("numerario");
   const [chequeNumber, setChequeNumber] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [transferReference, setTransferReference] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const clientNamesFor = (payment: Payment) => {
@@ -85,6 +87,8 @@ export default function Receipts() {
     setAmounts({});
     setMethod("numerario");
     setChequeNumber("");
+    setBankName("");
+    setTransferReference("");
     setInvoiceSearch("");
     setDialogOpen(true);
   };
@@ -108,6 +112,14 @@ export default function Receipts() {
       toast({ title: "Erro", description: "Indique o número do cheque", variant: "destructive" });
       return;
     }
+    if (method === "transferencia" && (!bankName.trim() || !transferReference.trim())) {
+      toast({
+        title: "Erro",
+        description: "Indique o nome do banco e a referência da transferência",
+        variant: "destructive",
+      });
+      return;
+    }
     const allocations = selectedIds.map((id) => ({ documentId: id, amount: parseFloat(amounts[id]) || 0 }));
     if (allocations.some((a) => a.amount <= 0)) {
       toast({ title: "Erro", description: "Todos os valores alocados devem ser maiores que zero", variant: "destructive" });
@@ -119,6 +131,8 @@ export default function Receipts() {
       const payment = await registerPayment({
         method,
         chequeNumber: method === "cheque" ? chequeNumber : undefined,
+        bankName: method === "transferencia" ? bankName : undefined,
+        transferReference: method === "transferencia" ? transferReference : undefined,
         allocations,
       });
       setDialogOpen(false);
@@ -236,6 +250,28 @@ export default function Receipts() {
                         placeholder="Ex: CHQ-1001"
                       />
                     </div>
+                  )}
+                  {method === "transferencia" && (
+                    <>
+                      <div>
+                        <Label htmlFor="new-receipt-bank">Nome do Banco</Label>
+                        <Input
+                          id="new-receipt-bank"
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          placeholder="Ex: BIM, Standard Bank, Absa"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="new-receipt-reference">Referência da Transferência</Label>
+                        <Input
+                          id="new-receipt-reference"
+                          value={transferReference}
+                          onChange={(e) => setTransferReference(e.target.value)}
+                          placeholder="Ex: TRF-20261008-001"
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -363,6 +399,13 @@ export default function Receipts() {
                           {receipt.chequeNumber && (
                             <div className="text-xs text-muted-foreground">
                               Nº {receipt.chequeNumber}
+                            </div>
+                          )}
+                          {receipt.method === "transferencia" && (receipt.bankName || receipt.transferReference) && (
+                            <div className="text-xs text-muted-foreground">
+                              {receipt.bankName}
+                              {receipt.bankName && receipt.transferReference && " · "}
+                              {receipt.transferReference && `Ref: ${receipt.transferReference}`}
                             </div>
                           )}
                         </div>

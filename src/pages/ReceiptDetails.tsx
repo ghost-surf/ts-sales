@@ -155,6 +155,13 @@ export default function ReceiptDetails() {
                   {receipt.chequeNumber && (
                     <span className="ml-2 text-muted-foreground">Nº {receipt.chequeNumber}</span>
                   )}
+                  {receipt.method === "transferencia" && (receipt.bankName || receipt.transferReference) && (
+                    <span className="ml-2 text-muted-foreground">
+                      {receipt.bankName}
+                      {receipt.bankName && receipt.transferReference && " · "}
+                      {receipt.transferReference && `Ref: ${receipt.transferReference}`}
+                    </span>
+                  )}
                 </div>
               </div>
               <div>

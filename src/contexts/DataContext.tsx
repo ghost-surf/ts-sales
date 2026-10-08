@@ -128,6 +128,8 @@ interface CreateDocumentInput {
 interface CreatePaymentInput {
   method: PaymentMethod;
   chequeNumber?: string;
+  bankName?: string;
+  transferReference?: string;
   allocations: Array<{ documentId: string; amount: number }>;
 }
 

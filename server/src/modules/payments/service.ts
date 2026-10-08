@@ -49,6 +49,8 @@ export async function create(operatorId: string, input: CreatePaymentInput) {
         receiptCode,
         method: input.method,
         chequeNumber: input.method === "cheque" ? input.chequeNumber : null,
+        bankName: input.method === "transferencia" ? input.bankName : null,
+        transferReference: input.method === "transferencia" ? input.transferReference : null,
         amount,
         operatorId,
         documents: {

@@ -85,6 +85,8 @@ export async function create(operatorId: string, input: CreateCreditNoteInput) {
           receiptCode: estCode,
           method: originalPayment.method,
           chequeNumber: originalPayment.chequeNumber,
+          bankName: originalPayment.bankName,
+          transferReference: originalPayment.transferReference,
           amount: -amount,
           kind: "reversal",
           operatorId,

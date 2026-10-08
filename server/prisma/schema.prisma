@@ -211,12 +211,14 @@ model DocumentItem {
 }
 
 model Payment {
-  id           String        @id @default(cuid())
-  receiptCode  String        @unique
-  paymentDate  DateTime      @default(now())
-  method       PaymentMethod
-  chequeNumber String?
-  amount       Decimal       @db.Decimal(10, 2)
+  id                String        @id @default(cuid())
+  receiptCode       String        @unique
+  paymentDate       DateTime      @default(now())
+  method            PaymentMethod
+  chequeNumber      String?
+  bankName          String?
+  transferReference String?
+  amount            Decimal       @db.Decimal(10, 2)
   kind         PaymentKind   @default(payment)
   operatorId   String
   createdAt    DateTime      @default(now())

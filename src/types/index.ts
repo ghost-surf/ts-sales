@@ -112,6 +112,8 @@ export interface Payment {
   paymentDate: string;
   method: PaymentMethod;
   chequeNumber?: string | null;
+  bankName?: string | null;
+  transferReference?: string | null;
   amount: number;
   kind: "payment" | "reversal";
   operatorId: string;
